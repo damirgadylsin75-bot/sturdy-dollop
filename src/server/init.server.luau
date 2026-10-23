@@ -45,6 +45,15 @@ end
 
 setAttr("Phase", "Boot")
 
+local phase = "Boot"
+local roundId = 0
+local cityRef = nil
+
+local function setPhase(p)
+	phase = p
+	setAttr("Phase", p)
+end
+
 -- module wiring -----------------------------------------------------------
 Sim.bindState(setAttr)
 Remotes.init()

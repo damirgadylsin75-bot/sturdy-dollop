@@ -152,6 +152,10 @@ NODE_server.scoring = NODE_scoring
 NODE_server.population = NODE_population
 NODE_server.units = NODE_units
 NODE_server.strikes = NODE_strikes
+NODE_remotes = node("remotes")
+NODE_city = node("city")
+NODE_server.remotes = NODE_remotes
+NODE_server.city = NODE_city
 local RS = { Shared = NODE_shared }
 services = { ReplicatedStorage = RS, TweenService = { Create = function() return { Play = function() end } end } }
 game = { GetService = function(_, name) return services[name] end }
@@ -169,7 +173,7 @@ function log(msg) LOG[#LOG + 1] = tostring(msg) end
 await lua.execute('math.randomseed(20261023)');
 await lua.execute(BOOTSTRAP);
 
-const nodeRows = await lua.execute('return NODE_config, NODE_mapgen, NODE_graph, NODE_sim, NODE_scoring, NODE_population, NODE_units, NODE_strikes');
+const nodeRows = await lua.execute('return NODE_server, NODE_config, NODE_mapgen, NODE_graph, NODE_sim, NODE_scoring, NODE_population, NODE_units, NODE_strikes, NODE_remotes, NODE_city');
 const nodeByName = {};
 for (const n of nodeRows) nodeByName[String(n.get('Name'))] = n;
 
@@ -191,7 +195,88 @@ loadModule('scoring', 'src/server/scoring.luau');
 loadModule('population', 'src/server/population.luau');
 loadModule('units', 'src/server/units.luau');
 loadModule('strikes', 'src/server/strikes.luau');
+loadModule('remotes', 'src/server/remotes.luau');
+loadModule('city', 'src/server/city.luau');
 console.log('all modules loaded');
+
+// ---------- boot mode: run the real init.server.luau ----------
+const BOOT_EXTRA = `
+-- richer stubs so the real init script can boot headless
+local function newSignal()
+	local sig = { handlers = {} }
+	function sig:Connect(fn)
+		self.handlers[#self.handlers + 1] = fn
+		return { Disconnect = function() end }
+	end
+	function sig:Fire(...)
+		for _, fn in ipairs(self.handlers) do fn(...) end
+	end
+	return sig
+end
+GENERIC_SIGNAL = newSignal()
+
+ALL_INSTANCES = {}
+local function newInstance(className)
+	local inst = {
+		ClassName = className,
+		_children = {},
+		_attrs = {},
+	}
+	ALL_INSTANCES[#ALL_INSTANCES + 1] = inst
+	function inst:SetAttribute(n, v) self._attrs[n] = v end
+	function inst:GetAttribute(n) return self._attrs[n] end
+	function inst:GetAttributeChangedSignal() return GENERIC_SIGNAL end
+	function inst:WaitForChild(n) return self._children[n] end
+	function inst:FindFirstChild(n) return self._children[n] end
+	function inst:Destroy() end
+	function inst:IsA(c) return c == self.ClassName end
+	function inst:FireAllClients() end
+	function inst:FireServer() end
+	function inst:FireClient() end
+	return setmetatable(inst, {
+		__index = function()
+			return GENERIC_SIGNAL -- unknown members act like connectable events
+		end,
+		__newindex = function(t, k, v) rawset(t, k, v) end,
+	})
+end
+Instance = { new = function(cn) return newInstance(cn) end }
+RaycastParams = { new = function() return newInstance("RaycastParams") end }
+
+task = {
+	spawn = function(fn) coroutine.wrap(fn)() end,
+	wait = function() return 1 end,
+	delay = function() end,
+}
+
+TweenInfo = { new = function() return {} end }
+
+HEARTBEAT = newSignal()
+services.RunService = { Heartbeat = HEARTBEAT, BindToRenderStep = function() end }
+services.Lighting = services.Lighting or {}
+services.Players = services.Players or {}
+
+function __pulse(n, dt)
+	for _ = 1, n do
+		HEARTBEAT:Fire(dt)
+	end
+end
+`;
+
+if (process.argv.includes('--boot')) {
+  await lua.execute(BOOT_EXTRA);
+  lua.globals.set('script', nodeByName['server']);
+  const initFn = lua.load(src('src/server/init.server.luau'), { name: '@src/server/init.server.luau' });
+  initFn.call();
+  console.log('init.server.luau loaded without errors');
+  const wrappedBoot = 'local print = log\n' + src('tests/boot_test.luau');
+  const bootFn = lua.load(wrappedBoot, { name: '@boot_test' });
+  bootFn.call();
+  const bootLogs = await lua.execute('return table.concat(LOG, "\\n")');
+  console.log(String(bootLogs[0] ?? ''));
+  console.log('BOOT SCENARIO OK');
+  process.exit(process.exitCode || 0);
+}
 
 // ---------- run the scenario ----------
 try {

@@ -93,3 +93,6 @@ jobs:
 
       - name: Run no-defense baseline
         run: node harness.mjs .. tests/sim_test.luau --no-defenses
+
+      - name: Boot smoke test (real init.server.luau)
+        run: node harness.mjs .. tests/sim_test.luau --boot
