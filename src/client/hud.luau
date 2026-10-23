@@ -269,6 +269,16 @@ function Hud.init(cityData)
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	}, toastHolder)
 
+	label(gui, {
+		Size = UDim2.new(0, 220, 0, 16),
+		Position = UDim2.new(0, 12, 1, -12),
+		AnchorPoint = Vector2.new(0, 1),
+		Text = "Sturdy Dollop v" .. Config.Version,
+		TextSize = 12,
+		TextColor3 = UI_DIM,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	})
+
 	announceLabel = label(gui, {
 		Size = UDim2.new(1, 0, 0, 40),
 		Position = UDim2.new(0, 0, 0, 130),

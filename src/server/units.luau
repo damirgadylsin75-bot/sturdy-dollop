@@ -319,6 +319,8 @@ local function updateSnipers(dt)
 					if math.random() < Config.Sniper.HitChance then
 						population.killZombie(z, "sniper")
 					end
+					-- gunshot echoes: the horde slowly drifts toward active rifles
+					population.emitNoise(Vector2.new(s.pos.X, s.pos.Z), Config.Simulation.SniperNoiseRadius, 3)
 				end
 			end
 		end

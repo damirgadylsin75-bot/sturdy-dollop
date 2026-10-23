@@ -44,6 +44,7 @@ local function getAttr(name)
 end
 
 setAttr("Phase", "Boot")
+setAttr("Version", Config.Version)
 
 local phase = "Boot"
 local roundId = 0

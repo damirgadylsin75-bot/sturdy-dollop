@@ -26,6 +26,7 @@ end
 -- and startLive() executed during load:
 assert(attr("Phase") == "Live", "Phase should be Live after boot, got " .. tostring(attr("Phase")))
 assert(attr("CiviliansTotal") == Config.Simulation.Civilians, "civilians must be registered")
+assert(attr("Version") == Config.Version, "version attribute must be published (sync canary)")
 assert(attr("PrepBudget") == Config.Prep.Budget, "prep budget must be set")
 
 -- run 3 sim seconds: the t=0 wave must spawn through the spawn queue

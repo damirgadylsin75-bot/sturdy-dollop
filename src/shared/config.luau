@@ -3,6 +3,8 @@
 
 local Config = {}
 
+Config.Version = "0.5.1" -- shown in HUD corner; sync canary for the user
+
 Config.Map = {
 	GridSize = 13,        -- intersections per side
 	NodeSpacing = 64,     -- studs between intersections
@@ -67,6 +69,15 @@ Config.Simulation = {
 	ThreatRefresh = 1.5,  -- sim seconds between zombie flow-field updates
 	WaveTelegraph = 12,   -- seconds of warning before each wave
 	AutoEvacFromZone = 2.5, -- sim seconds per civilian saved from a holding zone
+	-- sound: explosions/gunfire attract the horde; the bigger the responding
+	-- group, the wider zombies smear around the source instead of stacking
+	NoiseSpreadBase = 8,
+	NoiseSpreadPerZombie = 1.5,
+	NoiseSpreadMax = 45,
+	SniperNoiseRadius = 60,
+	BlastNoiseRadius = 120,
+	MissileNoiseRadius = 170,
+	CivDetourBudget = 40, -- how far off the evac route a fleeing civilian may detour
 	Waves = {
 		{ t = 0, count = 26 },
 		{ t = 80, count = 32 },

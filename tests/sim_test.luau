@@ -150,6 +150,7 @@ assert(tryPlace("safezone", 0, 0) == false, "second zone should fail")
 section("simulation")
 local waves = Config.Simulation.Waves
 local orderedAirstrike, orderedMissile = false, false
+	local noiseProbed = false
 local maxZombies = 0
 local dt = 1 / 30
 
@@ -179,6 +180,10 @@ for step = 1, 30 * 320 do
 			local p = city.outbreakPoints[2]
 			local ok, err = Strikes.order("missile", p.X, p.Y)
 			assert(ok, "missile order failed: " .. tostring(err))
+		end
+		if t > 150 and not noiseProbed then
+			noiseProbed = true
+			Population.emitNoise(city.outbreakPoints[3], 150, 5)
 		end
 
 		local z = attrs.ZombiesAlive or 0

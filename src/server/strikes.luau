@@ -44,6 +44,8 @@ local function impact(pos, radius, big)
 	units.damageBarricadesInRadius(pos, radius + 4, 400)
 	units.damageZone(pos, radius, big and 320 or 160)
 	scorchMark(pos, radius)
+	-- the blast rings out: nearby hordes converge on the impact area
+	population.emitNoise(pos, big and Config.Simulation.MissileNoiseRadius or Config.Simulation.BlastNoiseRadius, 6)
 end
 
 local function orderAirstrike(pos)

@@ -26,6 +26,7 @@ local spawnQueue = {}
 local spawnAccum = 0
 local attrTimer = 0
 local telegraphs = {} -- { pos, part }
+local noiseEvents = {} -- recent loud events zombies are attracted to
 
 local CELL = 40
 local civGrid, zomGrid = {}, {}
@@ -149,9 +150,57 @@ local function nextNodeByField(fromNode, toNode, field)
 	return fromNode -- dead end: turn back
 end
 
+-- Fleeing civilians: generally descend the evac field, but when a zombie is
+-- near they take the (bounded) detour that puts the most distance between
+-- them and it — "run away" beats "run straight".
+local function nextNodeForCivilian(c, fromNode)
+	local node = city.nodes[fromNode]
+	local zom = findNearestInGrid(zomGrid, node.pos, 90)
+	if not zom then
+		return nextNodeByField(fromNode, fromNode, distEvac)
+	end
+	local bestEvac = math.huge
+	for _, nb in ipairs(node.edges) do
+		local v = distEvac[nb] or math.huge
+		if v < bestEvac then bestEvac = v end
+	end
+	local best, bestScore = nil, -math.huge
+	for _, nb in ipairs(node.edges) do
+		local v = distEvac[nb] or math.huge
+		if v <= bestEvac + Config.Simulation.CivDetourBudget then
+			local np = city.nodes[nb].pos
+			local dz = (np - zom.pos).Magnitude
+			local backPenalty = (nb == fromNode and #node.edges > 1) and 25 or 0
+			local score = dz + backPenalty + math.random() * 8
+			if score > bestScore then
+				best, bestScore = nb, score
+			end
+		end
+	end
+	if best then return best end
+	return nextNodeByField(fromNode, fromNode, distEvac)
+end
+
+-- Zombies respond to noise: greedy street-walk toward the smeared point.
+local function nextNodeToward(fromNode, targetPos)
+	local node = city.nodes[fromNode]
+	local best, bestD = nil, math.huge
+	for _, nb in ipairs(node.edges) do
+		local d = (city.nodes[nb].pos - targetPos).Magnitude + math.random() * 12
+		if d < bestD then
+			best, bestD = nb, d
+		end
+	end
+	return best or fromNode
+end
+
 local function arrived(agent)
 	agent.from = agent.to
-	agent.to = nextNodeByField(agent.from, agent.from, agent.zombie and threat or distEvac)
+	if agent.zombie then
+		agent.to = nextNodeByField(agent.from, agent.from, threat)
+	else
+		agent.to = nextNodeForCivilian(agent, agent.from)
+	end
 end
 
 local function moveAlongEdge(agent, dt, speed)
@@ -164,6 +213,12 @@ local function moveAlongEdge(agent, dt, speed)
 		return
 	end
 	local dir = delta / dist
+	-- zombies don't march in lockstep: sinusoidal lateral wobble per agent
+	if agent.zombie then
+		local ang = math.sin(simNow * (agent.wobbleFreq or 3) + (agent.wobblePhase or 0)) * (agent.wobbleAmp or 0.4)
+		local ca, sa = math.cos(ang), math.sin(ang)
+		dir = Vector2.new(dir.X * ca - dir.Y * sa, dir.X * sa + dir.Y * ca)
+	end
 	local step = speed * dt
 
 	if agent.zombie and units then
@@ -247,6 +302,9 @@ function convertCivilian(c)
 		to = from,
 		zombie = true,
 		speedMul = 0.85 + math.random() * 0.35,
+		wobblePhase = math.random() * math.pi * 2,
+		wobbleFreq = 1.6 + math.random() * 2.6,
+		wobbleAmp = 0.25 + math.random() * 0.5,
 		dot = dot,
 	}
 	z.to = nextNodeByField(z.from, z.from, threat)
@@ -308,6 +366,9 @@ local function registerZombie(pos, dot)
 		from = Graph.nearestNode(city, pos),
 		zombie = true,
 		speedMul = 0.85 + math.random() * 0.35,
+		wobblePhase = math.random() * math.pi * 2,
+		wobbleFreq = 1.6 + math.random() * 2.6,
+		wobbleAmp = 0.25 + math.random() * 0.5,
 	}
 	z.to = z.from
 	if dot then
@@ -373,9 +434,42 @@ local function updateZombie(z, dt)
 		local c = findNearestInGrid(civGrid, z.pos, Config.Simulation.ChaseRange)
 		if c and not c.convert then
 			z.chaseTarget = c
+		elseif not z.noiseTarget then
+			-- head for the freshest loud thing we can "hear"
+			for _, ne in ipairs(noiseEvents) do
+				if ne.untilT > simNow and (ne.pos - z.pos).Magnitude <= ne.radius then
+					local group = 0
+					for _, other in pairs(zoms) do
+						if (other.pos - ne.pos).Magnitude < 34 then
+							group = group + 1
+						end
+					end
+					local spread = math.min(
+						Config.Simulation.NoiseSpreadBase + group * Config.Simulation.NoiseSpreadPerZombie,
+						Config.Simulation.NoiseSpreadMax
+					)
+					local ang = math.random() * math.pi * 2
+					local rad = math.sqrt(math.random()) * spread
+					z.noiseTarget = Vector2.new(ne.pos.X + math.cos(ang) * rad, ne.pos.Y + math.sin(ang) * rad)
+					z.noiseUntil = ne.untilT + math.random() * 2
+					break
+				end
+			end
 		end
 	end
 	if z.chaseTarget then return end
+	-- walking toward a noise beats following the human-scent field
+	if z.noiseTarget then
+		if (z.noiseUntil or 0) > simNow then
+			if (z.noiseTarget - z.pos).Magnitude < 6 then
+				z.noiseTarget = nil -- reached the smear point, mill around
+			else
+				z.to = nextNodeToward(z.from, z.noiseTarget)
+			end
+		else
+			z.noiseTarget = nil
+		end
+	end
 	moveAlongEdge(z, dt, Config.Simulation.ZombieSpeed * z.speedMul)
 end
 
@@ -406,6 +500,7 @@ function Population.newRound(cityData, folderTbl)
 	spawnQueue = {}
 	spawnAccum = 0
 	telegraphs = {}
+	noiseEvents = {}
 	for _, pos in ipairs(cityData.civSpawns) do
 		spawnCivilian(pos)
 	end
@@ -486,7 +581,7 @@ function Population.beginSim()
 			c.state = "sheltered"
 		else
 			c.state = "toEvac"
-			c.to = nextNodeByField(c.from, c.from, distEvac)
+			c.to = nextNodeForCivilian(c, c.from)
 		end
 	end
 	recomputeThreat()
@@ -497,7 +592,7 @@ function Population.panicSheltered()
 		if c.state == "sheltered" then
 			c.state = "toEvac"
 			c.from = Graph.nearestNode(city, c.pos)
-			c.to = nextNodeByField(c.from, c.from, distEvac)
+			c.to = nextNodeForCivilian(c, c.from)
 		end
 	end
 end
@@ -552,6 +647,19 @@ function Population.countZombiesNear(pos, radius)
 		end
 	end
 	return n
+end
+
+-- Loud events (explosions, gunfire) attract nearby zombies. Registered by
+-- Strikes/Units; the smear around the source scales with responder count.
+function Population.emitNoise(pos, radius, duration)
+	noiseEvents[#noiseEvents + 1] = {
+		pos = pos,
+		radius = radius,
+		untilT = simNow + (duration or 4),
+	}
+	if #noiseEvents > 8 then
+		table.remove(noiseEvents, 1)
+	end
 end
 
 -- diagnostic hook for the headless test harness
