@@ -137,6 +137,7 @@ local function placeSniper(x, z)
 		CFrame = CFrame.new(rx, roofY, rz),
 		Color = Config.color("Sniper"),
 		CastShadow = false,
+		Material = Enum.Material.Neon,
 	}, folders.units)
 
 	snipers[#snipers + 1] = {

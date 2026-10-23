@@ -39,7 +39,7 @@ local convertCivilian, saveCivilian, killZombie, killCivilian
 local function makeDot(folder, colorName, size)
 	local p = Instance.new("Part")
 	p.Shape = Enum.PartType.Ball
-	p.Material = Enum.Material.SmoothPlastic
+	p.Material = Enum.Material.Neon
 	p.Anchored = true
 	p.CanCollide = false
 	p.CanQuery = false
@@ -702,8 +702,8 @@ function Population.update(dt)
 	if #spawnQueue > 0 then
 		spawnAccum = spawnAccum - dt
 		if spawnAccum <= 0 then
-			spawnAccum = 0.1
-			local batch = math.min(5, #spawnQueue)
+			spawnAccum = Config.Simulation.SpawnInterval
+			local batch = math.min(Config.Simulation.SpawnBatch, #spawnQueue)
 			for _ = 1, batch do
 				local spot = table.remove(spawnQueue)
 				registerZombie(spot, nil)
@@ -718,6 +718,56 @@ function Population.update(dt)
 	for _, c in pairs(civs) do
 		updateCiv(c, dt)
 	end
+	-- soft crowd separation: neighbors within Separation.Radius push each
+	-- other apart so the horde reads as a dense mass, not stacked dots
+	local sep = Config.Simulation.Separation
+	local sepCell = 3.5
+	local sepGrid = {}
+	for _, z in pairs(zoms) do
+		local k = math.floor(z.pos.X / sepCell) .. ":" .. math.floor(z.pos.Y / sepCell)
+		local cell = sepGrid[k]
+		if not cell then
+			cell = {}
+			sepGrid[k] = cell
+		end
+		cell[#cell + 1] = z
+	end
+	local rSq = sep.Radius * sep.Radius
+	for _, z in pairs(zoms) do
+		local cx = math.floor(z.pos.X / sepCell)
+		local cz = math.floor(z.pos.Y / sepCell)
+		local pushX, pushZ = 0, 0
+		local checked = 0
+		for gx = cx - 1, cx + 1 do
+			for gz = cz - 1, cz + 1 do
+				local cell = sepGrid[gx .. ":" .. gz]
+				if cell then
+					for _, o in ipairs(cell) do
+						if o ~= z then
+							local dx, dz = z.pos.X - o.pos.X, z.pos.Y - o.pos.Y
+							local dSq = dx * dx + dz * dz
+							if dSq < rSq and dSq > 1e-6 then
+								local d = math.sqrt(dSq)
+								local overlap = (sep.Radius - d) / d
+								pushX = pushX + dx * overlap
+								pushZ = pushZ + dz * overlap
+								checked = checked + 1
+								if checked >= sep.MaxNeighbors then break end
+							end
+						end
+					end
+					if checked >= sep.MaxNeighbors then break end
+				end
+			end
+			if checked >= sep.MaxNeighbors then break end
+		end
+		if pushX ~= 0 or pushZ ~= 0 then
+			local mag = math.sqrt(pushX * pushX + pushZ * pushZ)
+			local push = math.min(mag * sep.Factor, sep.MaxPush)
+			z.pos = Vector2.new(z.pos.X + pushX / mag * push, z.pos.Y + pushZ / mag * push)
+		end
+	end
+
 	for _, z in pairs(zoms) do
 		placeDot(z.dot, z.pos)
 	end

@@ -3,7 +3,7 @@
 
 local Config = {}
 
-Config.Version = "0.7.1" -- shown in HUD corner; sync canary for the user
+Config.Version = "0.8.0" -- shown in HUD corner; sync canary for the user
 
 Config.Map = {
 	GridSize = 13,        -- intersections per side
@@ -60,7 +60,11 @@ Config.Simulation = {
 	CivWalkSpeed = 6.5,
 	CivPanicSpeed = 11.5,
 	ZombieSpeed = 10,
-	ZombieCap = 300,
+	ZombieCap = 650,
+	SpawnBatch = 14,      -- zombies per spawn tick
+	SpawnInterval = 0.07, -- sim seconds between spawn ticks
+	-- soft crowd separation (no physics): neighbors push each other apart
+	Separation = { Radius = 2.4, Factor = 0.32, MaxPush = 0.6, MaxNeighbors = 6 },
 	InfectTime = 1.2,     -- seconds of contact to convert a civilian
 	InfectRange = 2.6,
 	ChaseRange = 12,
@@ -79,10 +83,10 @@ Config.Simulation = {
 	MissileNoiseRadius = 170,
 	CivDetourBudget = 40, -- how far off the evac route a fleeing civilian may detour
 	Waves = {
-		{ t = 0, count = 34 },
-		{ t = 80, count = 42 },
-		{ t = 160, count = 58 },
-		{ t = 240, count = 72 },
+		{ t = 0, count = 90 },
+		{ t = 80, count = 120 },
+		{ t = 160, count = 150 },
+		{ t = 240, count = 180 },
 	},
 }
 
@@ -128,6 +132,9 @@ Config.RoofTrim = "6E6353"
 
 Config.Interface = {
 	CRTEnabled = true, -- client toggle: key C
+	-- proximity whitening: the more entities nearby, the closer to white
+	-- (gradual; pure client-side, costs nothing on the network)
+	DensityGlow = { Radius = 7, Cap = 10, MaxT = 0.8, Interval = 0.12 },
 }
 
 local warnedColors = {}
