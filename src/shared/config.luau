@@ -3,7 +3,7 @@
 
 local Config = {}
 
-Config.Version = "0.10.0" -- shown in HUD corner; sync canary for the user
+Config.Version = "0.11.0" -- shown in HUD corner; sync canary for the user
 
 Config.Map = {
 	GridSize = 13,        -- intersections per side
@@ -62,11 +62,11 @@ Config.Simulation = {
 	CivWalkSpeed = 6.5,
 	CivPanicSpeed = 11.5,
 	ZombieSpeed = 10,
-	ZombieCap = 1000,
-	SpawnBatch = 18,      -- zombies per spawn tick
-	SpawnInterval = 0.06, -- sim seconds between spawn ticks
+	ZombieCap = 1200,
+	SpawnBatch = 24,      -- zombies per spawn tick
+	SpawnInterval = 0.05, -- sim seconds between spawn ticks
 	-- soft crowd separation (no physics): neighbors push each other apart
-	Separation = { Radius = 2.4, Factor = 0.32, MaxPush = 0.6, MaxNeighbors = 6 },
+	Separation = { Radius = 3.2, Factor = 0.55, MaxPush = 1.1, MaxNeighbors = 8 },
 	InfectTime = 1.2,     -- seconds of contact to convert a civilian
 	InfectRange = 2.6,
 	ChaseRange = 12,
@@ -85,17 +85,22 @@ Config.Simulation = {
 	MissileNoiseRadius = 170,
 	CivDetourBudget = 40, -- how far off the evac route a fleeing civilian may detour
 	Waves = {
-		{ t = 0, count = 160 },
-		{ t = 80, count = 210 },
-		{ t = 160, count = 270 },
-		{ t = 240, count = 360 },
+		{ t = 0, count = 260 },
+		{ t = 80, count = 340 },
+		{ t = 160, count = 420 },
+		{ t = 240, count = 500 },
 	},
+	SiegeShare = 0.55,   -- fraction of the horde that actively besieges walls
+	HoleSeekRange = 80,  -- everyone within this of a hole streams into it
+	WallSeekRange = 95,  -- siegers walk to the nearest intact wall within this
+	HoleArc = 26,        -- degrees: width of a breach hole
 }
 
 Config.Barricade = { Hp = 300, ZombieDps = 14 }
 Config.Sniper = { Range = 160, Cooldown = 1.4, HitChance = 0.78 }
-Config.SafeZone = { Radius = 42, Hp = 900, ZombieDps = 10 }
--- wall "holds" Hp/ZombieDps zombie-seconds of pressure (900/10 = 90 z-sec)
+Config.SafeZone = { Radius = 42, Hp = 900, ZombieDps = 10, SecondHoleHp = 380 }
+-- wall "holds" Hp/ZombieDps z-seconds of pressure; after the first hole the
+-- rest of the ring is weaker (SecondHoleHp) - holes beget holes
 Config.Mg = {
 	Range = 42,
 	BurstCd = 0.2,     -- seconds between bursts
@@ -144,9 +149,6 @@ Config.RoofTrim = "6E6353"
 
 Config.Interface = {
 	CRTEnabled = true, -- client toggle: key C
-	-- proximity whitening: the more entities nearby, the closer to white
-	-- (gradual; pure client-side, costs nothing on the network)
-	DensityGlow = { Radius = 7, Cap = 10, MaxT = 0.8, Interval = 0.12 },
 }
 
 local warnedColors = {}

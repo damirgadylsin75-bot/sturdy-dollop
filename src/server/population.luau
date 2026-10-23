@@ -24,6 +24,7 @@ local threatTimer = 0
 
 local spawnQueue = {}
 local spawnAccum = 0
+local dotTimer = 0
 local attrTimer = 0
 local telegraphs = {} -- { pos, part }
 local noiseEvents = {} -- recent loud events zombies are attracted to
@@ -313,6 +314,7 @@ function convertCivilian(c)
 		wobblePhase = math.random() * math.pi * 2,
 		wobbleFreq = 1.6 + math.random() * 2.6,
 		wobbleAmp = 0.25 + math.random() * 0.5,
+		siege = math.random() < Config.Simulation.SiegeShare,
 		dot = dot,
 	}
 	z.to = nextNodeByField(z.from, z.from, threat)
@@ -377,6 +379,7 @@ local function registerZombie(pos, dot)
 		wobblePhase = math.random() * math.pi * 2,
 		wobbleFreq = 1.6 + math.random() * 2.6,
 		wobbleAmp = 0.25 + math.random() * 0.5,
+		siege = math.random() < Config.Simulation.SiegeShare,
 	}
 	z.to = z.from
 	if dot then
@@ -474,6 +477,13 @@ local function updateZombie(z, dt)
 		end
 	end
 	if z.chaseTarget then return end
+	-- the horde piles onto holes and (the sieging half) onto intact walls
+	if not z.noiseTarget then
+		local wp = units.wallTargetFor(z.pos, z.siege)
+		if wp then
+			z.to = nextNodeToward(z.from, wp)
+		end
+	end
 	-- walking toward a noise beats following the human-scent field
 	if z.noiseTarget then
 		if (z.noiseUntil or 0) > simNow then
@@ -515,6 +525,7 @@ function Population.newRound(cityData, folderTbl)
 	threatTimer = 0
 	spawnQueue = {}
 	spawnAccum = 0
+	dotTimer = 0
 	telegraphs = {}
 	noiseEvents = {}
 	for _, pos in ipairs(cityData.civSpawns) do
@@ -784,11 +795,16 @@ function Population.update(dt)
 		end
 	end
 
-	for _, z in pairs(zoms) do
-		placeDot(z.dot, z.pos)
-	end
-	for _, c in pairs(civs) do
-		placeDot(c.dot, c.pos)
+	-- network throttle: refresh dot CFrames at 20 Hz, not every sim tick
+	dotTimer = dotTimer - dt
+	if dotTimer <= 0 then
+		dotTimer = 0.05
+		for _, z in pairs(zoms) do
+			placeDot(z.dot, z.pos)
+		end
+		for _, c in pairs(civs) do
+			placeDot(c.dot, c.pos)
+		end
 	end
 
 	attrTimer = attrTimer - dt

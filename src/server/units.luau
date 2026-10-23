@@ -187,7 +187,8 @@ local function placeSafeZone(x, z)
 		disc = disc,
 		-- stagger save pulses so multiple zones don't tick in sync
 		saveTimer = Config.Simulation.AutoEvacFromZone + 0.4 * #zones,
-		breached = false,
+		holes = {},
+		panicDone = false,
 	}
 	publishCounts()
 	return true
@@ -297,7 +298,6 @@ end
 
 function Units.damageZone(pos, radius, dmg)
 	for _, zn in ipairs(zones) do
-		if not zn.breached then
 			local closest = Vector2.new(
 				math.clamp(pos.X, zn.center.X - zn.radius, zn.center.X + zn.radius),
 				math.clamp(pos.Y, zn.center.Y - zn.radius, zn.center.Y + zn.radius)
@@ -305,53 +305,70 @@ function Units.damageZone(pos, radius, dmg)
 			if (closest - pos).Magnitude <= radius then
 				zn.hp = zn.hp - dmg
 			end
-		end
 	end
 end
 
-local function breachZone(zn)
-	if zn.breached then return end
-	zn.breached = true
-	zn.ring.Color = Config.color("Outbreak")
-	zn.disc.Color = Config.color("Outbreak")
-	zn.disc.Transparency = 0.92
-	-- visible hole where the crowd broke through
-	local dir = zn.pressDir or Vector2.new(1, 0)
-	local holePos = zn.center + dir * zn.radius
+local TAU = math.pi * 2
+
+-- angular distance helper
+local function angDiff(a, b)
+	local d = math.abs((a - b) % TAU)
+	if d > math.pi then d = TAU - d end
+	return d
+end
+
+-- Local breach: a HOLE opens exactly where the crowd pressed through.
+-- The rest of the ring stays solid; the crowd funnels into the gap.
+local function makeHole(zn, ang)
+	zn.holes[#zn.holes + 1] = { ang = ang }
+	local hp = zn.center + Vector2.new(math.cos(ang), math.sin(ang)) * zn.radius
 	part({
 		Name = "BreachHole",
-		Size = Vector3.new(9, 1.1, 9),
-		CFrame = CFrame.new(holePos.X, 0.55, holePos.Y),
+		Size = Vector3.new(11, 1.15, 11),
+		CFrame = CFrame.new(hp.X, 0.55, hp.Y),
 		Color = Config.color("Breach"),
 		CastShadow = false,
-	}, folders.units).Transparency = 0.15
-	remotes.send({ kind = "barBreak", x = holePos.X, z = holePos.Y })
-	remotes.send({ kind = "announce", text = "❌ Стену зоны продавила орда — там дыра!", dur = 3.5 })
-	population.panicSheltered()
-end
-
--- zombies pressing on a wall: wall hp drains, pressure direction accumulates
-function Units.pressZone(zn, dirUnit, dmg)
-	if zn.breached then return end
-	zn.hp = zn.hp - dmg
-	zn.pressDir = (zn.pressDir or Vector2.new(0, 0)) + dirUnit * dmg
-	if zn.hp <= 0 then
-		breachZone(zn)
+	}, folders.units).Transparency = 0.1
+	remotes.send({ kind = "barBreak", x = hp.X, z = hp.Y })
+	if not zn.panicDone then
+		zn.panicDone = true
+		remotes.send({ kind = "announce", text = "❌ Стену зоны продавили — в бреши давка!", dur = 3 })
+		population.panicSheltered()
 	end
+	zn.hp = Config.SafeZone.SecondHoleHp -- the rest of the ring is weaker now
 end
 
--- blocks a zombie from walking into an intact zone; clamps to the wall and
--- registers pressure. fromPos outside + toPos inside => stopped at rim.
+-- Zombies pushing INTO a zone: clamp at the rim, drain wall HP at the exact
+-- pressure angle, open a hole there when it gives way.
+-- Overlap rule: a rim covered by another intact zone is interior (no wall).
 function Units.blockZoneEntry(fromPos, toPos, dt)
 	for _, zn in ipairs(zones) do
-		if not zn.breached then
-			local dFrom = (fromPos - zn.center).Magnitude
-			if dFrom > zn.radius then
-				local toCenter = toPos - zn.center
-				if toCenter.Magnitude < zn.radius then
+		local toCenter = toPos - zn.center
+		if toCenter.Magnitude < zn.radius then
+			local fromCenter = fromPos - zn.center
+			if fromCenter.Magnitude >= zn.radius then
+				-- crossing into this zone; interior of another zone = pass
+				local interior = false
+				for _, other in ipairs(zones) do
+					if other ~= zn and (toPos - other.center).Magnitude < other.radius then
+						interior = true
+						break
+					end
+				end
+				if not interior then
+					local ang = math.atan2(toCenter.Y, toCenter.X)
+					for _, h in ipairs(zn.holes) do
+						if angDiff(ang, h.ang) < math.rad(Config.Simulation.HoleArc) / 2 then
+							return nil -- through the breach
+						end
+					end
 					local dirUnit = toCenter.Unit
 					local stopped = zn.center + dirUnit * (zn.radius + 0.4)
-					Units.pressZone(zn, dirUnit, Config.SafeZone.ZombieDps * dt)
+					zn.hp = zn.hp - Config.SafeZone.ZombieDps * dt
+					if zn.hp <= 0 then
+						makeHole(zn, ang)
+						return nil
+					end
 					return stopped
 				end
 			end
@@ -360,27 +377,46 @@ function Units.blockZoneEntry(fromPos, toPos, dt)
 	return nil
 end
 
+-- Where should this zombie head? Holes attract everyone nearby; intact walls
+-- attract the besieging half of the horde (so the mass visibly piles on).
+function Units.wallTargetFor(pos, isSieger)
+	local best, bestD = nil, math.huge
+	for _, zn in ipairs(zones) do
+		for _, h in ipairs(zn.holes) do
+			local hp = zn.center + Vector2.new(math.cos(h.ang), math.sin(h.ang)) * zn.radius
+			local d = (hp - pos).Magnitude
+			if d < bestD and d <= Config.Simulation.HoleSeekRange then
+				best, bestD = hp, d
+			end
+		end
+	end
+	if best then return best end
+	if not isSieger then return nil end
+	for _, zn in ipairs(zones) do
+		local dir = pos - zn.center
+		local d = dir.Magnitude
+		if d > zn.radius then
+			local rim = zn.center + dir.Unit * zn.radius
+			local rd = (rim - pos).Magnitude
+			if rd < bestD and rd <= Config.Simulation.WallSeekRange then
+				best, bestD = rim, rd
+			end
+		end
+	end
+	return best
+end
+
 local function sectorLabel(pos)
 	return ""
 end
 
 function Units.isSheltered(pos)
 	for _, zn in ipairs(zones) do
-		if not zn.breached and (pos - zn.center).Magnitude <= zn.radius then
+		if (pos - zn.center).Magnitude <= zn.radius then
 			return true
 		end
 	end
 	return false
-end
-
-function Units.getZones()
-	local alive = {}
-	for _, zn in ipairs(zones) do
-		if not zn.breached then
-			alive[#alive + 1] = zn
-		end
-	end
-	return alive
 end
 
 local function updateSnipers(dt)
@@ -412,23 +448,12 @@ end
 
 local function updateZone(dt)
 	for _, zn in ipairs(zones) do
-		if not zn.breached then
-			local pressured = population.countZombiesNear(zn.center, zn.radius + 4)
-			if pressured > 0 then
-				zn.hp = zn.hp - pressured * Config.SafeZone.ZombieDps * dt
-				if zn.hp <= 0 then
-					breachZone(zn)
-				else
-					zn.ring.Color = Config.color("Evac"):Lerp(Config.color("Outbreak"), 1 - zn.hp / zn.maxHp)
-				end
-			end
-			if not zn.breached then
-				zn.saveTimer = zn.saveTimer - dt
-				if zn.saveTimer <= 0 then
-					zn.saveTimer = Config.Simulation.AutoEvacFromZone
-					population.saveSheltered(zn.center, zn.radius)
-				end
-			end
+		local stressed = math.clamp(1 - zn.hp / zn.maxHp, 0, 1)
+		zn.ring.Color = Config.color("Evac"):Lerp(Config.color("Outbreak"), stressed * 0.8)
+		zn.saveTimer = zn.saveTimer - dt
+		if zn.saveTimer <= 0 then
+			zn.saveTimer = Config.Simulation.AutoEvacFromZone
+			population.saveSheltered(zn.center, zn.radius)
 		end
 	end
 end

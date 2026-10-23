@@ -222,7 +222,6 @@ function City.build(city)
 	-- buildings: dark body + warm rooftop + props -----------------------------
 	local bodyBase = Config.color("Building")
 	local shadowColor = Config.color("BuildingShadow")
-	local trimColor = Config.color("RoofTrim")
 	for _, b in ipairs(city.buildings) do
 		local shade = 0.85 + b.shade * 0.3
 		part({
@@ -251,14 +250,6 @@ function City.build(city)
 			Size = Vector3.new(b.size.X + 1.2, 0.9, b.size.Y + 1.2),
 			CFrame = CFrame.new(b.pos.X, b.height + 0.45, b.pos.Y),
 			Color = roofColor,
-			CastShadow = false,
-		}, static)
-		-- parapet trim ring
-		part({
-			Name = "RoofTrim",
-			Size = Vector3.new(b.size.X + 1.8, 0.5, b.size.Y + 1.8),
-			CFrame = CFrame.new(b.pos.X, b.height + 0.2, b.pos.Y),
-			Color = trimColor,
 			CastShadow = false,
 		}, static)
 
