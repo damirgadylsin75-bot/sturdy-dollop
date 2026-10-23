@@ -23,10 +23,10 @@ Players.CharacterAutoLoads = false -- top-down strategy: no avatars
 
 -- flat "navigation app" lighting
 local Lighting = game:GetService("Lighting")
-Lighting.ClockTime = 14.2
-Lighting.Brightness = 2.4
-Lighting.Ambient = Color3.fromRGB(120, 130, 150)
-Lighting.OutdoorAmbient = Color3.fromRGB(140, 148, 165)
+Lighting.ClockTime = 17.4 -- dusk: moodier radar vibe
+Lighting.Brightness = 2.1
+Lighting.Ambient = Color3.fromRGB(88, 96, 118)
+Lighting.OutdoorAmbient = Color3.fromRGB(108, 116, 138)
 Lighting.GlobalShadows = true
 Lighting.FogEnd = 100000
 

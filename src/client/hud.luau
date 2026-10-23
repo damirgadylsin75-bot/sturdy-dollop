@@ -22,13 +22,13 @@ local toastHolder, announceLabel, diagLabel
 local resultsOverlay, resultsTitle, resultsGrade, resultsStats, resultsReason
 local lastAnnounceAt = 0
 
-local UI_BG = Color3.fromRGB(18, 22, 31)
-local UI_STROKE = Color3.fromRGB(42, 49, 64)
-local UI_TEXT = Color3.fromRGB(222, 228, 238)
-local UI_DIM = Color3.fromRGB(154, 166, 184)
-local ACCENT = Color3.fromRGB(53, 208, 255)
+local UI_BG = Color3.fromRGB(10, 12, 18)
+local UI_STROKE = Color3.fromRGB(34, 42, 56)
+local UI_TEXT = Color3.fromRGB(214, 224, 232)
+local UI_DIM = Color3.fromRGB(126, 138, 156)
+local ACCENT = Color3.fromRGB(61, 224, 132) -- radar green
 local GOOD = Color3.fromRGB(46, 204, 113)
-local BAD = Color3.fromRGB(255, 71, 71)
+local BAD = Color3.fromRGB(255, 84, 84)
 
 local function mk(class, props, parent)
 	local inst = Instance.new(class)
@@ -387,7 +387,7 @@ function Hud.init(cityData)
 		Size = UDim2.new(0, 250, 0, 50),
 		Position = UDim2.new(1, -16, 1, -16),
 		AnchorPoint = Vector2.new(1, 1),
-		BackgroundColor3 = Color3.fromRGB(23, 92, 60),
+		BackgroundColor3 = Color3.fromRGB(16, 68, 44),
 		BorderSizePixel = 0,
 		Text = "▶  НАЧАТЬ СИМУЛЯЦИЮ",
 		TextSize = 16,
@@ -443,7 +443,7 @@ function Hud.init(cityData)
 		Size = UDim2.new(0, 220, 0, 48),
 		Position = UDim2.new(0.5, 0, 1, -68),
 		AnchorPoint = Vector2.new(0.5, 0),
-		BackgroundColor3 = Color3.fromRGB(23, 92, 60),
+		BackgroundColor3 = Color3.fromRGB(16, 68, 44),
 		BorderSizePixel = 0,
 		Text = " Играть снова (новый город)",
 		TextSize = 15,

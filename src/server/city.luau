@@ -58,6 +58,7 @@ function City.build(city)
 	water.Transparency = 0.2
 
 	local streetColor = Config.color("Street")
+	local laneColor = Config.color("LaneMark")
 	for _, e in ipairs(city.edges) do
 		local pa = city.nodes[e.a].pos
 		local pb = city.nodes[e.b].pos
@@ -72,8 +73,23 @@ function City.build(city)
 			Color = streetColor,
 			CastShadow = false,
 		}, static)
+		-- dashed center line: the "navigation app" look
+		local dashes = math.max(math.floor(len / 18), 1)
+		for k = 0, dashes do
+			local dp = pa:Lerp(pb, k / dashes)
+			part({
+				Name = "LaneMark",
+				Size = Vector3.new(0.8, 0.06, 5),
+				CFrame = CFrame.new(dp.X, 0.24, dp.Y) * CFrame.Angles(0, yaw, 0),
+				Color = laneColor,
+				CastShadow = false,
+			}, static)
+		end
 	end
 
+	local trunkColor = Config.color("TreeTrunk")
+	local crownColor = Config.color("TreeCrown")
+	local treeOffsets = { { -0.25, 0.1 }, { 0.2, -0.16 }, { 0.04, 0.24 } }
 	for _, park in ipairs(city.parks) do
 		part({
 			Name = "Park",
@@ -82,11 +98,38 @@ function City.build(city)
 			Color = Config.color("Park"),
 			CastShadow = false,
 		}, static)
+		for k, off in ipairs(treeOffsets) do
+			local tx = park.pos.X + off[1] * park.size.X
+			local tz = park.pos.Y + off[2] * park.size.Y
+			part({
+				Name = "TreeTrunk",
+				Size = Vector3.new(1, 3.2, 1),
+				CFrame = CFrame.new(tx, 2.4, tz),
+				Color = trunkColor,
+				CastShadow = false,
+			}, static)
+			part({
+				Name = "TreeCrown",
+				Shape = Enum.PartType.Ball,
+				Size = Vector3.new(5.2, 5.2, 5.2),
+				CFrame = CFrame.new(tx, 5.6, tz),
+				Color = crownColor,
+				CastShadow = false,
+			}, static)
+		end
 	end
 
 	local base = Config.color("Building")
+	local shadowColor = Config.color("BuildingShadow")
 	for _, b in ipairs(city.buildings) do
 		local shade = 0.85 + b.shade * 0.3
+		part({
+			Name = "BuildingShadow",
+			Size = Vector3.new(b.size.X + 3, 0.3, b.size.Y + 3),
+			CFrame = CFrame.new(b.pos.X, 0.2, b.pos.Y),
+			Color = shadowColor,
+			CastShadow = false,
+		}, static)
 		part({
 			Name = "Building",
 			Size = Vector3.new(b.size.X, b.height, b.size.Y),

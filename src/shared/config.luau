@@ -3,7 +3,7 @@
 
 local Config = {}
 
-Config.Version = "0.5.3" -- shown in HUD corner; sync canary for the user
+Config.Version = "0.6.0" -- shown in HUD corner; sync canary for the user
 
 Config.Map = {
 	GridSize = 13,        -- intersections per side
@@ -56,11 +56,11 @@ Config.CommandPoints = {
 
 Config.Simulation = {
 	TimeLimit = 480,      -- sim seconds, then results
-	Civilians = 140,
+	Civilians = 190,
 	CivWalkSpeed = 6.5,
 	CivPanicSpeed = 11.5,
 	ZombieSpeed = 10,
-	ZombieCap = 260,
+	ZombieCap = 300,
 	InfectTime = 1.2,     -- seconds of contact to convert a civilian
 	InfectRange = 2.6,
 	ChaseRange = 12,
@@ -79,10 +79,10 @@ Config.Simulation = {
 	MissileNoiseRadius = 170,
 	CivDetourBudget = 40, -- how far off the evac route a fleeing civilian may detour
 	Waves = {
-		{ t = 0, count = 26 },
-		{ t = 80, count = 32 },
-		{ t = 160, count = 45 },
-		{ t = 240, count = 55 },
+		{ t = 0, count = 34 },
+		{ t = 80, count = 42 },
+		{ t = 160, count = 58 },
+		{ t = 240, count = 72 },
 	},
 }
 
@@ -99,19 +99,23 @@ Config.Net = {
 }
 
 Config.Colors = {
-	Ground = "1C2333",
-	Water = "1D3A5F",
-	Street = "343D52",
-	Park = "24512F",
-	Building = "49546E",
-	Zombie = "FF4747",
-	Civilian = "FFD166",
-	Sniper = "35D0FF",
-	Barricade = "FF9F1C",
+	Ground = "131826",
+	Water = "16304F",
+	Street = "2A3245",
+	LaneMark = "465271",
+	Park = "1C3E28",
+	TreeTrunk = "4A3B2A",
+	TreeCrown = "2F7A45",
+	Building = "3E4864",
+	BuildingShadow = "0D1120",
+	Zombie = "3DE070",
+	Civilian = "E9F5D2",
+	Sniper = "38C8E8",
+	Barricade = "E88F1A",
 	Evac = "2ECC71",
-	SafeZone = "5B8CFF",
+	SafeZone = "4E86E0",
 	Outbreak = "FF2A2A",
-	Scorch = "0B0D12",
+	Scorch = "07090F",
 }
 
 function Config.color(name)

@@ -38,10 +38,10 @@ local function flatDisc(x, z, thickness, diameter, color, transparency)
 end
 
 local POOF_COLORS = {
-	zombie = Color3.fromRGB(255, 80, 80),
-	civilian = Color3.fromRGB(255, 210, 110),
-	convert = Color3.fromRGB(160, 60, 60),
-	bar = Color3.fromRGB(255, 160, 40),
+	zombie = Color3.fromRGB(61, 224, 112),
+	civilian = Color3.fromRGB(233, 245, 210),
+	convert = Color3.fromRGB(24, 92, 48),
+	bar = Color3.fromRGB(232, 143, 26),
 }
 
 local function poof(payload)

@@ -76,7 +76,8 @@ function CameraRig.init()
 		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement and lastPos then
 			local now = UserInputService:GetMouseLocation()
 			local delta = (now - lastPos) * (height / 430)
-			center = center + Vector2.new(delta.X, delta.Y)
+			-- inverted: mouse moves like a camera look, not map-grab
+			center = center - delta
 			center = Vector2.new(math.clamp(center.X, -PAN_LIMIT, PAN_LIMIT), math.clamp(center.Y, -PAN_LIMIT, PAN_LIMIT))
 			lastPos = now
 		end
