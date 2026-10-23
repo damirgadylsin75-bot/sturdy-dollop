@@ -19,6 +19,7 @@ local cityData = MapGen.generate(seed)
 local CameraRig = require(script.camera)
 local Input = require(script.input)
 local Fx = require(script.fx)
+local Crt = require(script.crt)
 local Hud = require(script.hud)
 
 -- Self-diagnostics: if a client module fails to boot, show the reason ON
@@ -55,6 +56,7 @@ end
 
 guard("camera", CameraRig.init)
 guard("fx", Fx.init)
+guard("crt", Crt.init)
 guard("input", function()
 	Input.init(cityData)
 end)

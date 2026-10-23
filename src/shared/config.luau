@@ -3,7 +3,7 @@
 
 local Config = {}
 
-Config.Version = "0.6.0" -- shown in HUD corner; sync canary for the user
+Config.Version = "0.7.0" -- shown in HUD corner; sync canary for the user
 
 Config.Map = {
 	GridSize = 13,        -- intersections per side
@@ -99,15 +99,19 @@ Config.Net = {
 }
 
 Config.Colors = {
-	Ground = "131826",
+	Ground = "20242E",
 	Water = "16304F",
-	Street = "2A3245",
-	LaneMark = "465271",
-	Park = "1C3E28",
-	TreeTrunk = "4A3B2A",
-	TreeCrown = "2F7A45",
-	Building = "3E4864",
-	BuildingShadow = "0D1120",
+	Asphalt = "23262E",
+	Sidewalk = "3B414E",
+	Curb = "4A5160",
+	LaneMark = "B9C2D4",
+	Park = "22452E",
+	TreeTrunk = "4E3D2B",
+	TreeCrown = "2E7444",
+	TreeCrownMid = "3C8F54",
+	TreeCrownTop = "4FAF6B",
+	Building = "343C52",
+	BuildingShadow = "10131E",
 	Zombie = "3DE070",
 	Civilian = "E9F5D2",
 	Sniper = "38C8E8",
@@ -116,6 +120,14 @@ Config.Colors = {
 	SafeZone = "4E86E0",
 	Outbreak = "FF2A2A",
 	Scorch = "07090F",
+}
+
+-- warm rooftop palette (index picked deterministically per building)
+Config.RoofColors = { "B4A48A", "A79780", "C2B299", "8F816C", "BBA98F", "9A8C74", "C7B89F" }
+Config.RoofTrim = "6E6353"
+
+Config.Interface = {
+	CRTEnabled = true, -- client toggle: key C
 }
 
 function Config.color(name)
