@@ -1,0 +1,11 @@
+{
+  "name": "sturdy-dollop-tests",
+  "private": true,
+  "description": "Headless simulation harness: runs the actual Luau game modules in WASM Luau with the Roblox API stubbed.",
+  "scripts": {
+    "test": "node harness.mjs .."
+  },
+  "dependencies": {
+    "@luau-rs/luau": "^0.739.0"
+  }
+}

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "arena/**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build place (Rojo)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rojo
+        run: |
+          curl -sL -o rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.7.1/rojo-7.7.1-linux-x86_64.zip
+          unzip -o rojo.zip
+          chmod +x rojo
+          ./rojo --version
+
+      - name: Build game.rbxl
+        run: ./rojo build default.project.json -o game.rbxl
+
+      - name: Upload place artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-rbxl
+          path: game.rbxl
+
+  syntax:
+    name: Luau syntax (luau-compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install luau
+        run: |
+          curl -sL -o luau.zip https://github.com/luau-lang/luau/releases/latest/download/luau-ubuntu.zip
+          unzip -o luau.zip
+          chmod +x luau luau-analyze luau-compile 2>/dev/null || true
+          ls -la
+
+      - name: Compile-check all sources
+        run: |
+          set -e
+          test -f ./luau-compile || { echo "luau-compile binary missing from luau-ubuntu.zip"; exit 1; }
+          find src tests -name '*.luau' -print0 | xargs -0 -n 1 ./luau-compile --compile=null
+          echo "all Luau sources compile"
+
+  sim:
+    name: Headless round simulation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install harness deps
+        run: npm install --no-audit --no-fund
+
+      - name: Run full round simulation
+        run: node harness.mjs ..
+
+      - name: Run no-defense baseline
+        run: node harness.mjs .. tests/sim_test.luau --no-defenses
