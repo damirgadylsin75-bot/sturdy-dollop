@@ -244,8 +244,8 @@ function City.build(city)
 		}, static)
 
 		-- rooftop slab (slight overhang) in the warm palette
-		local roofHex = Config.RoofColors[math.floor(b.shade * #Config.RoofColors) + 1]
-		local roofColor = Color3.fromHex(roofHex)
+		local roofIdx = math.min(math.floor(b.shade * #Config.RoofColors) + 1, #Config.RoofColors)
+		local roofColor = Color3.fromHex(Config.RoofColors[roofIdx])
 		part({
 			Name = "Roof",
 			Size = Vector3.new(b.size.X + 1.2, 0.9, b.size.Y + 1.2),

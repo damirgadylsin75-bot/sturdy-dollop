@@ -3,7 +3,7 @@
 
 local Config = {}
 
-Config.Version = "0.7.0" -- shown in HUD corner; sync canary for the user
+Config.Version = "0.7.1" -- shown in HUD corner; sync canary for the user
 
 Config.Map = {
 	GridSize = 13,        -- intersections per side
@@ -130,8 +130,19 @@ Config.Interface = {
 	CRTEnabled = true, -- client toggle: key C
 }
 
+local warnedColors = {}
 function Config.color(name)
-	return Color3.fromHex(Config.Colors[name])
+	local hex = Config.Colors[name]
+	if not hex then
+		-- version skew (stale module) or typo: never crash the render path,
+		-- paint an obvious magenta marker instead
+		if not warnedColors[name] then
+			warnedColors[name] = true
+			warn("[config] unknown color key: " .. tostring(name) .. " (stale sync?)")
+		end
+		return Color3.fromRGB(255, 0, 255)
+	end
+	return Color3.fromHex(hex)
 end
 
 -- Ordered tool definitions for the client toolbar.
