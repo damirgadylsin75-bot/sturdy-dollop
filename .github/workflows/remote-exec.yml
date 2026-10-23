@@ -12,6 +12,10 @@ name: Remote exec (real Roblox servers via Open Cloud)
 # The key lives ONLY in GitHub secrets - never in chat, never in files.
 # Without the setup this workflow reports "not configured" and stays green.
 
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   workflow_dispatch:
   push:
@@ -60,9 +64,37 @@ jobs:
           fi
 
       - name: Upload place as Saved version
+        id: publish
+        continue-on-error: true
         if: steps.gate.outputs.run == 'true' && !hashFiles('SKIP')
-        run: python3 tools/rbx_cloud.py publish --universe "$UNIVERSE_ID" --place "$PLACE_ID" --file game.rbxl --type Saved
+        run: python3 tools/rbx_cloud.py publish --universe "$UNIVERSE_ID" --place "$PLACE_ID" --file game.rbxl --type Saved 2>&1 | tee publish.json
 
       - name: Run round smoke on real servers
-        if: steps.gate.outputs.run == 'true' && !hashFiles('SKIP')
-        run: python3 tools/rbx_cloud.py run --universe "$UNIVERSE_ID" --place "$PLACE_ID" --script tests/cloud_smoke.luau --timeout 240
+        id: smoke
+        continue-on-error: true
+        if: steps.gate.outputs.run == 'true' && !hashFiles('SKIP') && steps.publish.outcome == 'success'
+        run: python3 tools/rbx_cloud.py run --universe "$UNIVERSE_ID" --place "$PLACE_ID" --script tests/cloud_smoke.luau --timeout 240 2>&1 | tee smoke.json
+
+      - name: Report into PR (agent-readable channel)
+        if: always() && steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "### Remote exec report"
+            echo ""
+            echo "**publish:**"
+            echo '```'
+            cat publish.json 2>/dev/null || echo "(step skipped)"
+            echo '```'
+            echo "**smoke:**"
+            echo '```'
+            cat smoke.json 2>/dev/null || echo "(not reached)"
+            echo '```'
+          } > report.md
+          PR=$(gh pr list --state open --limit 1 --json number --jq '.[0].number')
+          if [ -n "$PR" ]; then
+            gh pr comment "$PR" --body-file report.md
+          else
+            gh release create "remote-exec-$(date +%s)" --notes "$(cat report.md)" 2>/dev/null || cat report.md
+          fi
