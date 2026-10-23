@@ -242,7 +242,15 @@ local function moveAlongEdge(agent, dt, speed)
 	end
 
 	local m = math.min(step, dist)
-	agent.pos = agent.pos + dir * m
+	local np = agent.pos + dir * m
+	if agent.zombie and units then
+		local stopped = units.blockZoneEntry(agent.pos, np, dt)
+		if stopped then
+			agent.pos = stopped -- pressing on the wall
+			return
+		end
+	end
+	agent.pos = np
 	if m >= dist - 1e-4 then
 		arrived(agent)
 	end
@@ -417,7 +425,15 @@ local function updateZombie(z, dt)
 			else
 				if d > 1e-4 then
 					local step = math.min(Config.Simulation.ZombieSpeed * z.speedMul * dt, d)
-					z.pos = z.pos + (delta / d) * step
+					local np = z.pos + (delta / d) * step
+					if units then
+						local stopped = units.blockZoneEntry(z.pos, np, dt)
+						if stopped then
+							z.pos = stopped
+							return
+						end
+					end
+					z.pos = np
 				end
 				-- latching on starts the devouring; the progress itself is
 				-- tracked on the civilian side so it survives chewer deaths

@@ -142,9 +142,15 @@ for i = 1, 2 do
 	tryPlace("sniper", b.pos.X, b.pos.Y)
 end
 
--- invalid placements must fail cleanly
+-- v0.10: overlapping zones form a fortress wall; third ring touches them
+if not SKIP_DEFENSES then
+	assert(tryPlace("safezone", 0, 0) == true, "second zone should place")
+	assert(tryPlace("safezone", 0, 60) == true, "third overlapping zone should place")
+	-- MG teams covering the wall
+	assert(tryPlace("mg", evacPos.X + 16, evacPos.Y - 16) == true, "mg should place")
+	assert(tryPlace("mg", evacPos.X - 16, evacPos.Y - 16) == true, "mg 2 should place")
+end
 assert(tryPlace("barricade", 5000, 5000) == false, "far barricade should fail")
-assert(tryPlace("safezone", 0, 0) == false, "second zone should fail")
 
 -- main loop -----------------------------------------------------------------
 section("simulation")

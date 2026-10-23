@@ -16,7 +16,8 @@ local city, folders
 local barricades = {}      -- array of records
 local barricadeByEdge = {} -- [edgeKey] = record
 local snipers = {}
-local zone = nil           -- single safe zone record
+local zones = {}           -- safe zone records (union walls when overlapping)
+local mgs = {}             -- machine-gun teams
 local extraEvacs = 0
 
 local rayParams
@@ -42,8 +43,9 @@ end
 local function publishCounts()
 	setAttr("Barricades", #barricades)
 	setAttr("Snipers", #snipers)
-	setAttr("SafeZones", zone and 1 or 0)
+	setAttr("SafeZones", #zones)
 	setAttr("EvacExtra", extraEvacs)
+	setAttr("Mgs", #mgs)
 end
 
 local function buildBeacon(pos)
@@ -149,12 +151,12 @@ local function placeSniper(x, z)
 end
 
 local function placeSafeZone(x, z)
-	if zone then
-		return false, "Безопасная зона уже развёрнута"
-	end
 	local r = Config.SafeZone.Radius
 	if z > city.waterZ - r - 6 then
 		return false, "Зона не влезает — слишком близко к воде"
+	end
+	if not scoring.trySpendPrep(Config.Costs.SafeZone) then
+		return false, "Не хватает бюджета подготовки"
 	end
 
 	local ring = part({
@@ -176,22 +178,17 @@ local function placeSafeZone(x, z)
 	}, folders.units)
 	disc.Transparency = 0.8
 
-	zone = {
+	zones[#zones + 1] = {
 		center = Vector2.new(x, z),
 		radius = r,
 		hp = Config.SafeZone.Hp,
 		maxHp = Config.SafeZone.Hp,
 		ring = ring,
 		disc = disc,
-		saveTimer = Config.Simulation.AutoEvacFromZone,
+		-- stagger save pulses so multiple zones don't tick in sync
+		saveTimer = Config.Simulation.AutoEvacFromZone + 0.4 * #zones,
 		breached = false,
 	}
-	if not scoring.trySpendPrep(Config.Costs.SafeZone) then
-		zone = nil
-		ring:Destroy()
-		disc:Destroy()
-		return false, "Не хватает бюджета подготовки"
-	end
 	publishCounts()
 	return true
 end
@@ -211,6 +208,28 @@ local function placeEvac(x, z)
 	return true
 end
 
+local function placeMg(x, z)
+	if not scoring.trySpendPrep(Config.Costs.Mg) then
+		return false, "Не хватает бюджета подготовки"
+	end
+	part({
+		Name = "MgTeam",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(3, 3, 3),
+		CFrame = CFrame.new(x, 1.6, z),
+		Color = Config.color("Mg"),
+		CastShadow = false,
+		Material = Enum.Material.Neon,
+	}, folders.units)
+	mgs[#mgs + 1] = {
+		pos = Vector3.new(x, 1.6, z),
+		cd = math.random() * Config.Mg.BurstCd,
+		noiseT = Config.Mg.NoiseEvery * math.random(),
+	}
+	publishCounts()
+	return true
+end
+
 function Units.place(tool, x, z)
 	if math.abs(x) > city.half + 250 or z > city.waterZ + 50 or z < -city.half - 250 then
 		return false, "Слишком далеко от города"
@@ -226,7 +245,15 @@ function Units.place(tool, x, z)
 		end
 		return placeSniper(x, z)
 	elseif tool == "safezone" then
+		if #zones >= Config.Prep.MaxSafeZones then
+			return false, "Достигнут лимит безопасных зон (" .. Config.Prep.MaxSafeZones .. ")"
+		end
 		return placeSafeZone(x, z)
+	elseif tool == "mg" then
+		if #mgs >= Config.Prep.MaxMg then
+			return false, "Достигнут лимит пулемётчиков (" .. Config.Prep.MaxMg .. ")"
+		end
+		return placeMg(x, z)
 	elseif tool == "evac" then
 		if extraEvacs >= Config.Prep.MaxExtraEvacs then
 			return false, "Дополнительная эвакуация уже есть"
@@ -269,36 +296,91 @@ function Units.damageBarricadesInRadius(pos, radius, dmg)
 end
 
 function Units.damageZone(pos, radius, dmg)
-	if zone and not zone.breached then
-		local closest = Vector2.new(
-			math.clamp(pos.X, zone.center.X - zone.radius, zone.center.X + zone.radius),
-			math.clamp(pos.Y, zone.center.Y - zone.radius, zone.center.Y + zone.radius)
-		)
-		if (closest - pos).Magnitude <= radius then
-			zone.hp = zone.hp - dmg
+	for _, zn in ipairs(zones) do
+		if not zn.breached then
+			local closest = Vector2.new(
+				math.clamp(pos.X, zn.center.X - zn.radius, zn.center.X + zn.radius),
+				math.clamp(pos.Y, zn.center.Y - zn.radius, zn.center.Y + zn.radius)
+			)
+			if (closest - pos).Magnitude <= radius then
+				zn.hp = zn.hp - dmg
+			end
 		end
 	end
 end
 
-local function breachZone()
-	if not zone or zone.breached then return end
-	zone.breached = true
-	zone.ring.Color = Config.color("Outbreak")
-	zone.disc.Color = Config.color("Outbreak")
-	zone.disc.Transparency = 0.92
-	remotes.send({ kind = "announce", text = "❌ Безопасная зона прорвана! Гражданские побежали к эвакуации", dur = 3.5 })
+local function breachZone(zn)
+	if zn.breached then return end
+	zn.breached = true
+	zn.ring.Color = Config.color("Outbreak")
+	zn.disc.Color = Config.color("Outbreak")
+	zn.disc.Transparency = 0.92
+	-- visible hole where the crowd broke through
+	local dir = zn.pressDir or Vector2.new(1, 0)
+	local holePos = zn.center + dir * zn.radius
+	part({
+		Name = "BreachHole",
+		Size = Vector3.new(9, 1.1, 9),
+		CFrame = CFrame.new(holePos.X, 0.55, holePos.Y),
+		Color = Config.color("Breach"),
+		CastShadow = false,
+	}, folders.units).Transparency = 0.15
+	remotes.send({ kind = "barBreak", x = holePos.X, z = holePos.Y })
+	remotes.send({ kind = "announce", text = "❌ Стену зоны продавила орда — там дыра!", dur = 3.5 })
 	population.panicSheltered()
 end
 
+-- zombies pressing on a wall: wall hp drains, pressure direction accumulates
+function Units.pressZone(zn, dirUnit, dmg)
+	if zn.breached then return end
+	zn.hp = zn.hp - dmg
+	zn.pressDir = (zn.pressDir or Vector2.new(0, 0)) + dirUnit * dmg
+	if zn.hp <= 0 then
+		breachZone(zn)
+	end
+end
+
+-- blocks a zombie from walking into an intact zone; clamps to the wall and
+-- registers pressure. fromPos outside + toPos inside => stopped at rim.
+function Units.blockZoneEntry(fromPos, toPos, dt)
+	for _, zn in ipairs(zones) do
+		if not zn.breached then
+			local dFrom = (fromPos - zn.center).Magnitude
+			if dFrom > zn.radius then
+				local toCenter = toPos - zn.center
+				if toCenter.Magnitude < zn.radius then
+					local dirUnit = toCenter.Unit
+					local stopped = zn.center + dirUnit * (zn.radius + 0.4)
+					Units.pressZone(zn, dirUnit, Config.SafeZone.ZombieDps * dt)
+					return stopped
+				end
+			end
+		end
+	end
+	return nil
+end
+
+local function sectorLabel(pos)
+	return ""
+end
+
 function Units.isSheltered(pos)
-	return zone ~= nil and not zone.breached and (pos - zone.center).Magnitude <= zone.radius
+	for _, zn in ipairs(zones) do
+		if not zn.breached and (pos - zn.center).Magnitude <= zn.radius then
+			return true
+		end
+	end
+	return false
 end
 
 function Units.getZones()
-	if zone and not zone.breached then
-		return { zone }
+	local alive = {}
+	for _, zn in ipairs(zones) do
+		if not zn.breached then
+			alive[#alive + 1] = zn
+		end
 	end
-	return {}
+	return alive
 end
 
 local function updateSnipers(dt)
@@ -329,20 +411,25 @@ local function updateSnipers(dt)
 end
 
 local function updateZone(dt)
-	if not zone or zone.breached then return end
-	local pressured = population.countZombiesNear(zone.center, zone.radius + 4)
-	if pressured > 0 then
-		zone.hp = zone.hp - pressured * Config.SafeZone.ZombieDps * dt
-		if zone.hp <= 0 then
-			breachZone()
-			return
+	for _, zn in ipairs(zones) do
+		if not zn.breached then
+			local pressured = population.countZombiesNear(zn.center, zn.radius + 4)
+			if pressured > 0 then
+				zn.hp = zn.hp - pressured * Config.SafeZone.ZombieDps * dt
+				if zn.hp <= 0 then
+					breachZone(zn)
+				else
+					zn.ring.Color = Config.color("Evac"):Lerp(Config.color("Outbreak"), 1 - zn.hp / zn.maxHp)
+				end
+			end
+			if not zn.breached then
+				zn.saveTimer = zn.saveTimer - dt
+				if zn.saveTimer <= 0 then
+					zn.saveTimer = Config.Simulation.AutoEvacFromZone
+					population.saveSheltered(zn.center, zn.radius)
+				end
+			end
 		end
-		zone.ring.Color = Config.color("Evac"):Lerp(Config.color("Outbreak"), 1 - zone.hp / zone.maxHp)
-	end
-	zone.saveTimer = zone.saveTimer - dt
-	if zone.saveTimer <= 0 then
-		zone.saveTimer = Config.Simulation.AutoEvacFromZone
-		population.saveSheltered(zone.center, zone.radius)
 	end
 end
 
@@ -361,7 +448,8 @@ function Units.newRound(cityData, folderTbl)
 	barricades = {}
 	barricadeByEdge = {}
 	snipers = {}
-	zone = nil
+	zones = {}
+	mgs = {}
 	extraEvacs = 0
 	rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -374,8 +462,43 @@ function Units.addDefaultEvac(nodeId)
 	population.addEvacPoint(nodeId)
 end
 
+local function updateMgs(dt)
+	for _, mg in ipairs(mgs) do
+		mg.cd = mg.cd - dt
+		if mg.cd <= 0 then
+			mg.cd = Config.Mg.BurstCd
+			local z = population.nearestZombie(Vector2.new(mg.pos.X, mg.pos.Z), Config.Mg.Range)
+			if z then
+				local target = Vector3.new(z.pos.X, 1.4, z.pos.Y)
+				remotes.send({
+					kind = "tracer",
+					from = { x = mg.pos.X, y = mg.pos.Y, z = mg.pos.Z },
+					to = { x = target.X, y = target.Y, z = target.Z },
+				})
+				if math.random() < Config.Mg.HitChance then
+					-- stagger: push the target back a step, then damage
+					local pushDir = Vector2.new(z.pos.X - mg.pos.X, z.pos.Y - mg.pos.Z)
+					if pushDir.Magnitude > 0.01 then
+						z.pos = z.pos + pushDir.Unit * Config.Mg.Stagger
+					end
+					z.hp = (z.hp or 1) - 0.5
+					if z.hp <= 0 then
+						population.killZombie(z, "mg")
+					end
+				end
+				mg.noiseT = mg.noiseT - Config.Mg.BurstCd
+				if mg.noiseT <= 0 then
+					mg.noiseT = Config.Mg.NoiseEvery
+					population.emitNoise(Vector2.new(mg.pos.X, mg.pos.Z), Config.Simulation.SniperNoiseRadius, 2)
+				end
+			end
+		end
+	end
+end
+
 function Units.update(dt)
 	updateSnipers(dt)
+	updateMgs(dt)
 	updateZone(dt)
 end
 

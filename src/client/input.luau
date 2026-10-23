@@ -88,6 +88,7 @@ local HINTS = {
 	sniper = "Снайпер: ЛКМ на крыше дома — поставить • ПКМ/Esc — выйти",
 	safezone = "Зона безопасности: ЛКМ — развернуть • колесо мыши — радиус",
 	evac = "Эвакуация: ЛКМ у перекрёстка",
+	mg = "Пулемётчики: ЛКМ на землю — отсекают подходы, но шум привлекает орду",
 	airstrike = "Авиаудар: ЛКМ — вызвать. Придёт через "
 		.. Config.Abilities.Airstrike.Delay .. " с, ляжет линией вдоль улицы",
 	missile = "Ракета: ЛКМ — удар. Почти мгновенно, большой радиус",
@@ -129,8 +130,8 @@ local function affordBuild(tool)
 	local info = toolById[tool]
 	if not info then return false end
 	if (attr("PrepBudget") or 0) < info.cost then return false end
-	local max = { safezone = Config.Prep.MaxSafeZones, barricade = Config.Prep.MaxBarricades, sniper = Config.Prep.MaxSnipers, evac = Config.Prep.MaxExtraEvacs }
-	local countAttr = { safezone = "SafeZones", barricade = "Barricades", sniper = "Snipers", evac = "EvacExtra" }
+	local max = { safezone = Config.Prep.MaxSafeZones, barricade = Config.Prep.MaxBarricades, sniper = Config.Prep.MaxSnipers, evac = Config.Prep.MaxExtraEvacs, mg = Config.Prep.MaxMg }
+	local countAttr = { safezone = "SafeZones", barricade = "Barricades", sniper = "Snipers", evac = "EvacExtra", mg = "Mgs" }
 	if (attr(countAttr[tool]) or 0) >= max[tool] then return false end
 	return true
 end
@@ -189,6 +190,13 @@ local function updateGhost()
 		ghost.Size = Vector3.new(0.6, zoneRadius * 2, zoneRadius * 2)
 		ghost.CFrame = CFrame.new(p.X, 1.1, p.Y) * CFrame.Angles(0, 0, math.rad(90))
 		ghost.Color = (ok and fit) and Config.color("SafeZone") or Color3.fromRGB(255, 80, 80)
+	elseif mode.tool == "mg" then
+		if not ghost or ghost.Name ~= "MgGhost" then
+			ghost = makeGhost("ball", Vector3.new(3, 3, 3), Config.color("Mg"))
+			ghost.Name = "MgGhost"
+		end
+		ghost.CFrame = CFrame.new(p.X, 1.6, p.Y)
+		ghost.Color = ok and Config.color("Mg") or Color3.fromRGB(255, 80, 80)
 	elseif mode.tool == "evac" then
 		local nodeId = Graph.nearestNodeWithin(city, p, Config.Prep.SnapNodeDist)
 		if not ghost or ghost.Name ~= "EvacGhost" then

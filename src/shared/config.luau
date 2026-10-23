@@ -3,7 +3,7 @@
 
 local Config = {}
 
-Config.Version = "0.8.0" -- shown in HUD corner; sync canary for the user
+Config.Version = "0.10.0" -- shown in HUD corner; sync canary for the user
 
 Config.Map = {
 	GridSize = 13,        -- intersections per side
@@ -16,11 +16,12 @@ Config.Map = {
 
 Config.Prep = {
 	Duration = 75,        -- real-time seconds of the planning phase
-	Budget = 140,         -- prep-phase currency
-	MaxBarricades = 12,
-	MaxSnipers = 8,
-	MaxSafeZones = 1,
+	Budget = 360,         -- prep-phase currency
+	MaxBarricades = 16,
+	MaxSnipers = 10,
+	MaxSafeZones = 8,
 	MaxExtraEvacs = 1,
+	MaxMg = 6,
 	SnapEdgeDist = 50,    -- max click distance from a street (barricades)
 	SnapNodeDist = 70,    -- max click distance from an intersection (evac)
 }
@@ -29,6 +30,7 @@ Config.Costs = {
 	Barricade = 10,
 	Sniper = 25,
 	SafeZone = 30,
+	Mg = 35,
 	Evac = 20,
 	Airstrike = 3,        -- paid with command points
 	Missile = 4,
@@ -49,7 +51,7 @@ Config.Abilities = {
 }
 
 Config.CommandPoints = {
-	Start = 4,
+	Start = 6,
 	Max = 10,
 	RegenInterval = 5,    -- sim seconds per +1
 }
@@ -60,9 +62,9 @@ Config.Simulation = {
 	CivWalkSpeed = 6.5,
 	CivPanicSpeed = 11.5,
 	ZombieSpeed = 10,
-	ZombieCap = 650,
-	SpawnBatch = 14,      -- zombies per spawn tick
-	SpawnInterval = 0.07, -- sim seconds between spawn ticks
+	ZombieCap = 1000,
+	SpawnBatch = 18,      -- zombies per spawn tick
+	SpawnInterval = 0.06, -- sim seconds between spawn ticks
 	-- soft crowd separation (no physics): neighbors push each other apart
 	Separation = { Radius = 2.4, Factor = 0.32, MaxPush = 0.6, MaxNeighbors = 6 },
 	InfectTime = 1.2,     -- seconds of contact to convert a civilian
@@ -83,16 +85,24 @@ Config.Simulation = {
 	MissileNoiseRadius = 170,
 	CivDetourBudget = 40, -- how far off the evac route a fleeing civilian may detour
 	Waves = {
-		{ t = 0, count = 90 },
-		{ t = 80, count = 120 },
-		{ t = 160, count = 150 },
-		{ t = 240, count = 180 },
+		{ t = 0, count = 160 },
+		{ t = 80, count = 210 },
+		{ t = 160, count = 270 },
+		{ t = 240, count = 360 },
 	},
 }
 
 Config.Barricade = { Hp = 300, ZombieDps = 14 }
 Config.Sniper = { Range = 160, Cooldown = 1.4, HitChance = 0.78 }
-Config.SafeZone = { Radius = 42, Hp = 600, ZombieDps = 16 }
+Config.SafeZone = { Radius = 42, Hp = 900, ZombieDps = 10 }
+-- wall "holds" Hp/ZombieDps zombie-seconds of pressure (900/10 = 90 z-sec)
+Config.Mg = {
+	Range = 42,
+	BurstCd = 0.2,     -- seconds between bursts
+	HitChance = 0.5,   -- per burst, vs a single target
+	Stagger = 0.45,    -- knockback on hit
+	NoiseEvery = 2.5,  -- MG fire attracts the horde periodically
+}
 Config.Evac = { CaptureRadius = 7 }
 
 Config.Net = {
@@ -120,6 +130,8 @@ Config.Colors = {
 	Civilian = "E9F5D2",
 	Sniper = "38C8E8",
 	Barricade = "E88F1A",
+	Mg = "D8C84A",
+	Breach = "8A1E1E",
 	Evac = "2ECC71",
 	SafeZone = "4E86E0",
 	Outbreak = "FF2A2A",
@@ -159,6 +171,7 @@ function Config.toolInfo()
 		{ id = "barricade", name = "Баррикада", icon = "🚧", key = Enum.KeyCode.Two,   cost = Config.Costs.Barricade, phase = "Planning" },
 		{ id = "sniper",    name = "Снайпер",   icon = "🎯", key = Enum.KeyCode.Three, cost = Config.Costs.Sniper,    phase = "Planning" },
 		{ id = "evac",      name = "Эвакуация", icon = "⛑", key = Enum.KeyCode.Four,  cost = Config.Costs.Evac,      phase = "Planning" },
+		{ id = "mg", name = "Пулемёт", icon = "🔫", key = Enum.KeyCode.Seven, cost = Config.Costs.Mg, phase = "Planning" },
 		{ id = "airstrike", name = "Авиаудар",  icon = "✈", key = Enum.KeyCode.Five,  cost = Config.Costs.Airstrike, phase = "Live" },
 		{ id = "missile",   name = "Ракета",    icon = "🚀", key = Enum.KeyCode.Six,   cost = Config.Costs.Missile,   phase = "Live" },
 	}
