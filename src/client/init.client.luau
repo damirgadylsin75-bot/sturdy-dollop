@@ -62,6 +62,39 @@ guard("hud", function()
 	Hud.init(cityData)
 end)
 
+-- late diagnostics: if the city failed to reach THIS client, say so on screen.
+-- Classic cause: StreamingEnabled left on in a stale place (nothing streams
+-- to a client without a character).
+task.delay(5, function()
+	local root = workspace:FindFirstChild("CityRoot")
+	local parts = 0
+	if root then
+		parts = #root:GetDescendants()
+	end
+	if parts < 10 then
+		local Players = game:GetService("Players")
+		local gui = Instance.new("ScreenGui")
+		gui.IgnoreGuiInset = true
+		gui.ResetOnSpawn = false
+		gui.DisplayOrder = 50
+		gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+		local banner = Instance.new("TextLabel")
+		banner.Size = UDim2.new(1, -40, 0, 64)
+		banner.Position = UDim2.new(0.5, 0, 0, 12)
+		banner.AnchorPoint = Vector2.new(0.5, 0)
+		banner.BackgroundColor3 = Color3.fromRGB(96, 62, 10)
+		banner.BorderSizePixel = 0
+		banner.Font = Enum.Font.Code
+		banner.TextSize = 14
+		banner.TextColor3 = Color3.fromRGB(255, 210, 120)
+		banner.TextWrapped = true
+		banner.Text = ("ДИАГНОСТИКА v%s: город не прогрузился на клиенте (%d частей). "
+			.. "Если у Workspace включён StreamingEnabled — выключи его в свойствах Workspace и пересинк. "
+			.. "Наши плейс-настройки делают это автоматически."):format(Config.Version or "?", parts)
+		banner.Parent = gui
+	end
+end)
+
 -- a restarted round generates a new city: re-seed client-side map data
 state:GetAttributeChangedSignal("Seed"):Connect(function()
 	local newSeed = state:GetAttribute("Seed")

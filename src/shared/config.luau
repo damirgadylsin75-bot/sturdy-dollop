@@ -3,7 +3,7 @@
 
 local Config = {}
 
-Config.Version = "0.5.2" -- shown in HUD corner; sync canary for the user
+Config.Version = "0.5.3" -- shown in HUD corner; sync canary for the user
 
 Config.Map = {
 	GridSize = 13,        -- intersections per side
