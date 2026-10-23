@@ -72,9 +72,15 @@ local function makeGhost(kind, size, color)
 	return p
 end
 
-local function ghostDiscRadius(x, z, radius, ok)
-	local p = makeGhost("disc", Vector3.new(0.6, radius * 2, radius * 2), ok and Color3.fromRGB(255, 90, 90) or Color3.fromRGB(140, 140, 140))
-	p.CFrame = CFrame.new(x, 1.1, z) * CFrame.Angles(0, 0, math.rad(90))
+local function strikeGhost(x, z, radius, ok)
+	if not ghost or ghost.Name ~= "StrikeGhost" then
+		destroyGhost()
+		ghost = makeGhost("disc", Vector3.new(0.6, radius * 2, radius * 2), Color3.fromRGB(255, 90, 90))
+		ghost.Name = "StrikeGhost"
+	end
+	ghost.Size = Vector3.new(0.6, radius * 2, radius * 2)
+	ghost.CFrame = CFrame.new(x, 1.1, z) * CFrame.Angles(0, 0, math.rad(90))
+	ghost.Color = ok and Color3.fromRGB(255, 90, 90) or Color3.fromRGB(140, 140, 140)
 end
 
 local HINTS = {
