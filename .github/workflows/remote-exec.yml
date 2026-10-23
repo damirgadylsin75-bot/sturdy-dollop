@@ -1,0 +1,50 @@
+name: Remote exec (real Roblox servers via Open Cloud)
+
+# Runs the game headlessly on actual Roblox servers and fetches the full logs.
+# Requires one-time setup by the repo owner:
+#   1. Create a test place inside an experience on create.roblox.com.
+#   2. Create an Open Cloud API key (Creator Dashboard -> Open Cloud -> API Keys)
+#      scoped to that experience with permissions:
+#        - universe-places: write
+#        - universe.place.luau-execution-session: write + read
+#   3. Add repository secrets: ROBLOX_API_KEY, and repository VARIABLES:
+#      UNIVERSE_ID, PLACE_ID (Settings -> Secrets and variables -> Actions).
+# The key lives ONLY in GitHub secrets - never in chat, never in files.
+# Without the setup this workflow reports "not configured" and stays green.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Cloud round smoke
+    runs-on: ubuntu-latest
+    env:
+      ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+      UNIVERSE_ID: ${{ vars.UNIVERSE_ID }}
+      PLACE_ID: ${{ vars.PLACE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rojo
+        run: |
+          curl -sL -o rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.7.1/rojo-7.7.1-linux-x86_64.zip
+          unzip -o rojo.zip && chmod +x rojo
+
+      - name: Build place
+        run: ./rojo build default.project.json -o game.rbxl
+
+      - name: Guard (skip silently if not configured)
+        run: |
+          if [ -z "$ROBLOX_API_KEY" ] || [ -z "$UNIVERSE_ID" ] || [ -z "$PLACE_ID" ]; then
+            echo "::notice::Open Cloud not configured (need secrets ROBLOX_API_KEY + vars UNIVERSE_ID/PLACE_ID). Skipping."
+            touch SKIP
+          fi
+
+      - name: Upload place as Saved version
+        if: ${{ !hashFiles('SKIP') }}
+        run: python3 tools/rbx_cloud.py publish --universe "$UNIVERSE_ID" --place "$PLACE_ID" --file game.rbxl --type Saved
+
+      - name: Run round smoke on real servers
+        if: ${{ !hashFiles('SKIP') }}
+        run: python3 tools/rbx_cloud.py run --universe "$UNIVERSE_ID" --place "$PLACE_ID" --script tests/cloud_smoke.luau --timeout 240

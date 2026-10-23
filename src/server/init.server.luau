@@ -206,8 +206,15 @@ end)
 RunService.Heartbeat:Connect(function(dt)
 	local sdt = Sim.advance(dt)
 	if sdt > 0 then
-		Population.update(sdt)
-		Units.update(sdt)
+		local ok, err = pcall(function()
+			Population.update(sdt)
+			Units.update(sdt)
+		end)
+		if not ok then
+			-- self-diagnostics: surface the failure on the HUD, keep the loop alive
+			warn("sim tick error: " .. tostring(err))
+			setAttr("LastError", "sim: " .. tostring(err))
+		end
 	end
 end)
 

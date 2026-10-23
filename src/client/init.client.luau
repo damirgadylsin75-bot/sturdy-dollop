@@ -21,10 +21,46 @@ local Input = require(script.input)
 local Fx = require(script.fx)
 local Hud = require(script.hud)
 
-CameraRig.init()
-Fx.init()
-Input.init(cityData)
-Hud.init(cityData)
+-- Self-diagnostics: if a client module fails to boot, show the reason ON
+-- SCREEN (instead of a mysterious half-broken state that needs the console).
+local function guard(name, fn)
+	local ok, err = pcall(fn)
+	if not ok then
+		warn("client boot error [" .. name .. "]: " .. tostring(err))
+		local Players = game:GetService("Players")
+		local gui = Instance.new("ScreenGui")
+		gui.IgnoreGuiInset = true
+		gui.ResetOnSpawn = false
+		gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+		local frame = Instance.new("Frame")
+		frame.Size = UDim2.new(1, 0, 0, 110)
+		frame.Position = UDim2.new(0, 0, 0, 0)
+		frame.BackgroundColor3 = Color3.fromRGB(60, 12, 12)
+		frame.BorderSizePixel = 0
+		frame.Parent = gui
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.new(1, -20, 1, -12)
+		text.Position = UDim2.new(0, 10, 0, 6)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.Code
+		text.TextSize = 15
+		text.TextColor3 = Color3.fromRGB(255, 120, 120)
+		text.TextWrapped = true
+		text.TextXAlignment = Enum.TextXAlignment.Left
+		text.Text = "CLIENT ERROR [" .. name .. "] v" .. (Config.Version or "?") .. ": " .. tostring(err)
+		text.Parent = frame
+	end
+	return ok
+end
+
+guard("camera", CameraRig.init)
+guard("fx", Fx.init)
+guard("input", function()
+	Input.init(cityData)
+end)
+guard("hud", function()
+	Hud.init(cityData)
+end)
 
 -- a restarted round generates a new city: re-seed client-side map data
 state:GetAttributeChangedSignal("Seed"):Connect(function()

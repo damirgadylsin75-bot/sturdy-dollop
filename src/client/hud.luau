@@ -18,7 +18,7 @@ local eventEvent
 local phaseLabel, statsLabel, scoreLabel
 local pauseButton, speedButton, startButton
 local toolButtons = {} -- [id] = { btn, main, stroke }; Instances cannot hold custom fields
-local toastHolder, announceLabel
+local toastHolder, announceLabel, diagLabel
 local resultsOverlay, resultsTitle, resultsGrade, resultsStats, resultsReason
 local lastAnnounceAt = 0
 
@@ -213,6 +213,15 @@ local function refresh()
 	end
 
 	refreshToolbar()
+
+	local errText = attr("LastError")
+	if errText then
+		diagLabel.Text = "Sturdy Dollop v" .. (Config.Version or "?") .. "  •  ОШИБКА: " .. errText
+		diagLabel.TextColor3 = BAD
+	else
+		diagLabel.Text = "Sturdy Dollop v" .. (Config.Version or "?") .. "  •  ок"
+		diagLabel.TextColor3 = UI_DIM
+	end
 end
 
 -- init --------------------------------------------------------------------
@@ -269,14 +278,15 @@ function Hud.init(cityData)
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	}, toastHolder)
 
-	label(gui, {
-		Size = UDim2.new(0, 220, 0, 16),
-		Position = UDim2.new(0, 12, 1, -12),
+	diagLabel = label(gui, {
+		Size = UDim2.new(0, 620, 0, 32),
+		Position = UDim2.new(0, 12, 1, -30),
 		AnchorPoint = Vector2.new(0, 1),
-		Text = "Sturdy Dollop v" .. Config.Version,
+		Text = "Sturdy Dollop v" .. Config.Version .. "  •  ок",
 		TextSize = 12,
 		TextColor3 = UI_DIM,
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextWrapped = true,
 	})
 
 	announceLabel = label(gui, {
