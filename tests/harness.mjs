@@ -49,7 +49,9 @@ V2mt.__div = function(a, b)
 end
 V2mt.__index = function(t, k)
   if k == "Magnitude" then return math.sqrt(t.X * t.X + t.Y * t.Y) end
-  if k == "SquaredMagnitude" then return t.X * t.X + t.Y * t.Y end
+  -- NOTE: deliberately NO SquaredMagnitude: real Roblox Vector2 does not
+  -- have it. Keep stubs aligned with the real API surface so misuse fails
+  -- here instead of on the user's machine.
   if k == "Unit" then
     local m = math.sqrt(t.X * t.X + t.Y * t.Y)
     if m < 1e-9 then return Vector2.new(0, 0) end

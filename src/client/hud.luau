@@ -17,7 +17,7 @@ local eventEvent
 
 local phaseLabel, statsLabel, scoreLabel
 local pauseButton, speedButton, startButton
-local toolButtons = {} -- [id] = button
+local toolButtons = {} -- [id] = { btn, main, stroke }; Instances cannot hold custom fields
 local toastHolder, announceLabel
 local resultsOverlay, resultsTitle, resultsGrade, resultsStats, resultsReason
 local lastAnnounceAt = 0
@@ -162,14 +162,14 @@ end
 local function refreshToolbar()
 	local ph = attr("Phase")
 	for _, info in ipairs(Config.toolInfo()) do
-		local btn = toolButtons[info.id]
-		if btn then
+		local rec = toolButtons[info.id]
+		if rec then
 			local active = Input.getTool() == info.id
 			local enabled = ph == info.phase
-			btn.BackgroundTransparency = enabled and 0.08 or 0.35
-			btn.infoLabel.TextTransparency = enabled and 0 or 0.5
-			btn.stroke.Color = active and ACCENT or UI_STROKE
-			btn.stroke.Thickness = active and 2.5 or 1.5
+			rec.btn.BackgroundTransparency = enabled and 0.08 or 0.35
+			rec.main.TextTransparency = enabled and 0 or 0.5
+			rec.stroke.Color = active and ACCENT or UI_STROKE
+			rec.stroke.Thickness = active and 2.5 or 1.5
 		end
 	end
 end
@@ -320,12 +320,10 @@ function Hud.init(cityData)
 			TextSize = 12,
 			TextColor3 = UI_DIM,
 		})
-		btn.infoLabel = main
-		btn.stroke = stroke
+		toolButtons[info.id] = { btn = btn, main = main, stroke = stroke }
 		btn.MouseButton1Click:Connect(function()
 			Input.setTool(info.id)
 		end)
-		toolButtons[info.id] = btn
 	end
 
 	pauseButton = mk("TextButton", {

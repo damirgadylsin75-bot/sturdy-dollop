@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local CameraRig = {}
 
 local cam
-local height = 430
+local height = 350
 local center = Vector2.new(0, 30)
 local MIN_H, MAX_H = 150, 820
 local PAN_LIMIT = 950
@@ -21,6 +21,13 @@ function CameraRig.zoomBy(delta)
 end
 
 local function apply(dt)
+	-- self-heal: Studio/tests may recreate CurrentCamera; keep writing to the live one
+	if workspace.CurrentCamera ~= cam then
+		cam = workspace.CurrentCamera
+		if not cam then return end
+		cam.CameraType = Enum.CameraType.Scriptable
+	end
+
 	local speed = height * 1.15
 	local move = Vector2.new()
 	if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Up) then
@@ -79,9 +86,10 @@ function CameraRig.init()
 end
 
 -- World point under the mouse on the y=0 plane (pure math, no raycast).
+-- GetMouseLocation returns SCREEN coords (incl. GUI inset) -> ScreenPointToRay.
 function CameraRig.groundPoint()
 	local loc = UserInputService:GetMouseLocation()
-	local ray = cam:ViewportPointToRay(loc.X, loc.Y)
+	local ray = cam:ScreenPointToRay(loc.X, loc.Y)
 	if math.abs(ray.Direction.Y) < 1e-5 then
 		return nil
 	end

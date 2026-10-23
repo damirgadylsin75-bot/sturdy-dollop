@@ -88,11 +88,11 @@ Config.Net = {
 }
 
 Config.Colors = {
-	Ground = "11151C",
-	Water = "14314F",
-	Street = "272C38",
-	Park = "1D3324",
-	Building = "3A4254",
+	Ground = "1C2333",
+	Water = "1D3A5F",
+	Street = "343D52",
+	Park = "24512F",
+	Building = "49546E",
 	Zombie = "FF4747",
 	Civilian = "FFD166",
 	Sniper = "35D0FF",

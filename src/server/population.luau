@@ -82,7 +82,9 @@ local function findNearestInGrid(grid, pos, radius)
 			local cell = grid[gx .. ":" .. gz]
 			if cell then
 				for _, e in ipairs(cell) do
-					local d = (e.pos - pos).SquaredMagnitude
+					-- NOTE: Roblox Vector2 has no SquaredMagnitude — compute manually
+					local dx, dy = e.pos.X - pos.X, e.pos.Y - pos.Y
+					local d = dx * dx + dy * dy
 					if d < bestD then
 						best, bestD = e, d
 					end
