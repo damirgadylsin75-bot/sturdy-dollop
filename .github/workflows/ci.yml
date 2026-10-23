@@ -69,6 +69,9 @@ jobs:
           [ "$STATUS" = "0" ] && echo "all Luau sources compile"
           exit $STATUS
 
+      - name: Lint require paths
+        run: node tests/lint_requires.mjs .
+
   sim:
     name: Headless round simulation
     runs-on: ubuntu-latest

@@ -11,13 +11,13 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.config)
 local MapGen = require(ReplicatedStorage.Shared.mapgen)
 
-local Sim = require(script.Parent.sim)
-local Remotes = require(script.Parent.remotes)
-local City = require(script.Parent.city)
-local Units = require(script.Parent.units)
-local Population = require(script.Parent.population)
-local Strikes = require(script.Parent.strikes)
-local Scoring = require(script.Parent.scoring)
+local Sim = require(script.sim)
+local Remotes = require(script.remotes)
+local City = require(script.city)
+local Units = require(script.units)
+local Population = require(script.population)
+local Strikes = require(script.strikes)
+local Scoring = require(script.scoring)
 
 Players.CharacterAutoLoads = false -- top-down strategy: no avatars
 
