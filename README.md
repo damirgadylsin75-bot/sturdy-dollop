@@ -70,14 +70,27 @@ Horde-defense + тактическая стратегия в реальном в
 
 ### Вариант B — Rojo live-sync (для разработки)
 
+**Windows, просто и по шагам:**
+1. Положи `rojo.exe` (из [релизов Rojo](https://github.com/rojo-rbx/rojo/releases/latest))
+   в корень репозитория — рядом с `serve.bat`.
+2. Запусти **`serve.bat`** (двойной клик) — поднимется сервер синхронизации `:34872`.
+3. В Studio: плагин **Rojo** (CreatorStore) → **Connect** → **Play**.
+
+Либо один раз собрать файл без синка: запусти **`build.bat`** → открой
+полученный `game.rbxl` в Studio → Play.
+
+<details>
+<summary>То же самое руками (macOS/Linux/терминал)</summary>
+
 ```bash
 git clone <repo> && cd sturdy-dollop
 rojo serve                # нужен Rojo 7.x: ставится с GitHub Releases
 ```
 
-1. В Studio поставь плагин **Rojo** (CreatorStore / Toolboox → плагины).
+1. В Studio поставь плагин **Rojo** (CreatorStore / Toolbox → плагины).
 2. Подключись к `localhost:34872` — дерево `src/` зальётся в место.
 3. **Play**.
+</details>
 
 ### Структура
 
