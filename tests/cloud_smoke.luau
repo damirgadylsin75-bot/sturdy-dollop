@@ -51,6 +51,7 @@ result.hinges = hinges
 result.textures = textures
 result.baseY = baseY
 result.driftX = math.floor(vx * 100) / 100
+-- текстуры: кузов 2 стороны + 2 колеса по 2 = 6
 -- машина должна стоять на колёсах: база около 3.6-3.8 (упала бы — ниже/улетела)
-result.ok = (hinges == 2) and (textures == 4) and baseY > 2.5 and baseY < 4.5 and vx < 1
+result.ok = (hinges == 2) and (textures == 6) and baseY > 2.5 and baseY < 4.5 and vx < 1
 return result
