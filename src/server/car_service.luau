@@ -53,11 +53,12 @@ function CarService.absorb(model)
 end
 
 -- Отдать физику машины игроку: без этого родной Drive (клиент) крутит
--- констрейнты вхолостую. Вызывается с небольшой задержкой после спавна.
+-- констрейнты вхолостую. Владение задаётся ТОЛЬКО на корнях сборок
+-- (SetNetworkOwner на приваренных/заякоренных частях запрещён).
 function CarService.setOwner(car, plr)
 	if not car or not car.Parent or not plr then return end
 	for _, p in car:GetDescendants() do
-		if p:IsA("BasePart") and not p.Anchored then
+		if p:IsA("BasePart") and not p.Anchored and p:GetRootPart() == p then
 			pcall(function()
 				p:SetNetworkOwner(plr)
 			end)
@@ -77,11 +78,18 @@ function CarService.spawn(cf, ownerPlayer)
 	CarService.despawn()
 
 	-- Стоковый сценарий A-Chassis: модель в мире → её скрипты сами варят
-	-- и ведут машину. Ничего не глушим, не анкируем, не перекручиваем.
+	-- и ведут машину. Ничего не глушим и не удаляем. Единственное чисто
+	-- техническое движение: снять якоря (заякоренная машина не поедет,
+	-- а модели из Toolbox часто лежат с заякоренным корнем).
 	local car = template:Clone()
 	car.Name = "PlayerCar"
-	car.Parent = raceFolder
 	car:PivotTo(cf)
+	for _, p in car:GetDescendants() do
+		if p:IsA("BasePart") and p.Anchored then
+			p.Anchored = false
+		end
+	end
+	car.Parent = raceFolder
 
 	car:SetAttribute("OwnerUserId", ownerPlayer and ownerPlayer.UserId or 0)
 	currentCar = car
