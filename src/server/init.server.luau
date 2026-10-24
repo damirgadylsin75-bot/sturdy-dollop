@@ -85,52 +85,6 @@ for m = 100, math.floor(Config.Race.DistanceM), 100 do
 	marker.Parent = scene
 end
 
--- ===== ЗАДНИК: город пользователя, 9 слоёв параллакса =====
--- Слои стоят стеной ЗА трассой (камера на +X). Чем слой дальше, тем
--- медленнее он плывёт по экрану — глубина сама собой. Порядок в конфиге:
--- от дальнего к ближнему. Высоты растут с глубиной (дальние = больше неба).
-local layerX = { -420, -360, -305, -255, -210, -170, -135, -105, -78 }
-local layerH = { 150, 135, 120, 108, 96, 86, 76, 66, 58 } -- мелкие
-local cityBottom = -14 -- дно города у линии дороги
-local backdropLen = 3000
-local backdropZ = -800
-
--- страховочное небо позади всего
-local skyWall = Instance.new("Part")
-skyWall.Anchored = true
-skyWall.CanCollide = false
-skyWall.CanQuery = false
-skyWall.CastShadow = false
-skyWall.Size = Vector3.new(2, 320, backdropLen)
-skyWall.Position = Vector3.new(-450, cityBottom + 146, backdropZ)
-skyWall.Color = Config.color("Sky")
-skyWall.Parent = scene
-
-for i, artId in Config.Art.CityLayers do
-	local x = layerX[i] or (-100 - i * 40)
-	local h = layerH[i] or 300
-	local plane = Instance.new("Part")
-	plane.Anchored = true
-	plane.CanCollide = false
-	plane.CanQuery = false
-	plane.CastShadow = false
-	plane.Size = Vector3.new(2, h, backdropLen)
-	plane.Position = Vector3.new(x, cityBottom + h / 2, backdropZ)
-	plane.Parent = scene
-
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Right -- сторона к камере
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 10
-	gui.Parent = plane
-	local img = Instance.new("ImageLabel")
-	img.BackgroundTransparency = 1
-	img.Size = UDim2.fromScale(1, 1)
-	img.ScaleType = Enum.ScaleType.Stretch
-	img.Image = artId
-	img.Parent = gui
-end
-
 -- ===== ЗАЕЗД =====
 local busy = false
 
