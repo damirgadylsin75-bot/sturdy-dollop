@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.config)
+local CarService = require(script.car_service)
 
 Players.CharacterAutoLoads = false -- никакого ходьбы: гараж = экран
 
@@ -57,11 +58,33 @@ end
 line(0, Config.color("Line"), 1.2)
 line(-length, Config.color("Line"), 2)
 
+-- контейнер машин заезда (камера клиента ищет его же)
+local raceFolder = Instance.new("Folder")
+raceFolder.Name = "Race"
+raceFolder.Parent = scene
+
+CarService.startup(state, raceFolder)
+
+local function playerStartCF()
+	local yaw = math.rad(Config.Race.CarYawDeg)
+	return CFrame.new(-Config.Race.LaneWidth / 2, 4, Config.Race.StartZ)
+		* CFrame.Angles(0, yaw, 0)
+end
+
+-- если машина уже лежала в Workspace — сразу ставим её на старт
+if state:GetAttribute("CarStatus") == "Ready" then
+	CarService.spawn(playerStartCF())
+end
+
 startRace.OnServerEvent:Connect(function(player)
 	if state:GetAttribute("Phase") ~= "Garage" then return end
 	state:SetAttribute("Phase", "Race")
-	-- v0.1: заглушка заезда; сюда встают дерево старта, машина игрока, ИИ и таймер
-	task.delay(3, function()
+	-- свежая машина на каждый заезд (v0.3: здесь будет дерево и соперник)
+	if state:GetAttribute("CarStatus") == "Ready" then
+		CarService.spawn(playerStartCF())
+	end
+	-- v0.1: заглушка заезда; сюда встают дерево старта, ИИ и таймер
+	task.delay(5, function()
 		state:SetAttribute("Phase", "Garage")
 	end)
 end)

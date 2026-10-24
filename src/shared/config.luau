@@ -2,7 +2,7 @@
 
 local Config = {}
 
-Config.Version = "0.1.0"
+Config.Version = "0.1.1"
 
 Config.Economy = {
 	StartCash = 500,
@@ -16,6 +16,8 @@ Config.Race = {
 	DistanceM = 402.3,     -- 1/4 мили
 	StudsPerMeter = 3.57,  -- роблокс-стады на метр (наш масштаб трека)
 	LaneWidth = 26,        -- стад между центрами полос
+	StartZ = -30,          -- где стоят машины на старте (стад по Z)
+	CarYawDeg = 0,         -- разворот модели машины, если смотрит не вдоль трека
 	TreeSteps = 3,         -- амбры
 	TreeInterval = 0.5,    -- сек между амбрами
 	GreenHold = 6,         -- сек зелёного до «уехал сам»
