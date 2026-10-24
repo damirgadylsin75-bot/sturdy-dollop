@@ -217,21 +217,49 @@ function CarService.spawn(cf, ownerPlayer)
 
 	CarService.despawn()
 
-	-- СПАВН: копия как есть + физическая начинка от CarPhysics (если модель
-	-- витринная — сварка декора, мотор-хинжи колёс, держатель курса).
 	local car = template:Clone()
 	car.Name = "PlayerCar"
 	car:PivotTo(cf)
+
+	-- авто-нос: разворачиваем модель так, чтобы водительское сиденье
+	-- смотрело вдоль трека (-Z). Никаких ручных углов — из любой модели.
+	local seat = car:FindFirstChild("DriveSeat", true)
+	if seat and seat:IsA("BasePart") then
+		local look = seat.CFrame.LookVector
+		local flat = Vector3.new(look.X, 0, look.Z)
+		if flat.Magnitude > 0.05 then
+			flat = flat.Unit
+			local theta = math.atan2(flat.X, -flat.Z)
+			local pivot = car:GetPivot()
+			car:PivotTo(CFrame.new(pivot.Position) * CFrame.Angles(0, theta, 0) * pivot.Rotation)
+		end
+	end
+
 	car.Parent = raceFolder
 
-	local phys, physErr = CarPhysics.build(car)
-	if phys then
-		local n = 0
-		for _ in pairs(phys.wheels) do n = n + 1 end
-		print(("%s [physics] начинка готова: привод %s, моторов %d"):format(
-			TAG, phys.config, n))
+	-- РОДНОЕ ШАССИ (у модели свои хинжи) → СПАВН КАК ЕСТЬ, НИЧЕГО НЕ СТРОИМ:
+	-- её собственный стек сваривает и ведёт машину. Наша начинка — только
+	-- для витринных моделей без физики.
+	local hingeCount = 0
+	for _, d in car:GetDescendants() do
+		if d:IsA("HingeConstraint") then hingeCount = hingeCount + 1 end
+	end
+
+	if hingeCount >= 2 then
+		car:SetAttribute("NativeChassis", true)
+		print(("%s родное шасси (%d хинжей) — спавн как есть, вмешательства нет")
+			:format(TAG, hingeCount))
 	else
-		warn(("%s [physics] машину не оживить: %s"):format(TAG, tostring(physErr)))
+		car:SetAttribute("PhysicsBuilt", true)
+		local phys, physErr = CarPhysics.build(car)
+		if phys then
+			local n = 0
+			for _ in pairs(phys.wheels) do n = n + 1 end
+			print(("%s [physics] витринная модель: начинка готова (привод %s, моторов %d)")
+				:format(TAG, phys.config, n))
+		else
+			warn(("%s [physics] машину не оживить: %s"):format(TAG, tostring(physErr)))
+		end
 	end
 
 	car:SetAttribute("OwnerUserId", ownerPlayer and ownerPlayer.UserId or 0)

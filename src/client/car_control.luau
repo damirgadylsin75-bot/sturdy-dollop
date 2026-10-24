@@ -26,6 +26,8 @@ local reversing = false
 local mode = "Auto" -- "Auto" | "Manual"
 local throttle, brake = 0, 0
 local hud, hudClock = nil, 0
+local native = false -- родное шасси: рулит его Drive, мы только HUD
+local values -- родной Values (для HUD в native-режиме)
 
 local TSCALE = Config.Tuning.DriveTorqueScale or 4
 
@@ -86,6 +88,16 @@ local function collectWheels(carModel, tune)
 end
 
 local function attach(carModel)
+	if carModel:GetAttribute("NativeChassis") then
+		-- родное шасси: педали/передачи делает ЕГО Drive, мы не вмешиваемся
+		native = true
+		car = carModel
+		values = carModel:FindFirstChild("Values")
+		makeHud()
+		print("[DragDrive] родное шасси: управление — его Drive, HUD из его Values")
+		return
+	end
+
 	local tuneModule = carModel:FindFirstChild("A-Chassis Tune", true)
 	if not tuneModule then
 		warn("[DragDrive] в машине нет модуля A-Chassis Tune")
@@ -170,7 +182,30 @@ RunService.Heartbeat:Connect(function(dt)
 	brake = (UserInputService:IsKeyDown(Enum.KeyCode.S)
 		or UserInputService:IsKeyDown(Enum.KeyCode.Down)) and 1 or 0
 
-	if not car or not car.Parent or not wheels or not engine then
+	if not car or not car.Parent then
+		return
+	end
+
+	-- родное шасси: только приборы из его Values
+	if native then
+		hudClock = hudClock + dt
+		if hud and hudClock > 0.1 then
+			hudClock = 0
+			local function num(name)
+				local v = values and values:FindFirstChild(name)
+				if v and (v:IsA("NumberValue") or v:IsA("IntValue")) then return v.Value end
+				return nil
+			end
+			local rpmN = num("RPM") or 0
+			local gearN = num("Gear") or 0
+			local kmh = math.abs(num("Velocity") or 0) * 3.6 / Config.Race.StudsPerMeter
+			hud.Text = ("%s  %d RPM  %d км/ч  [stock]"):format(
+				gearN < 0 and "R" or tostring(gearN), rpmN, kmh)
+		end
+		return
+	end
+
+	if not wheels or not engine then
 		return
 	end
 
