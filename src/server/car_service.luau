@@ -297,10 +297,9 @@ function CarService.buildCar(name, cf, isAI)
 		warn(("%s кузова нет — машина будет голой рамой (закинь модель в Workspace)")
 			:format(TAG))
 	end
-	model.Parent = raceFolder
-
 	local st = newCarState(model, base, wheels, seat, isAI)
 	cars[model] = st
+	model.Parent = raceFolder or workspace
 	print(("%s собрана: %s (шасси наше, колёс 4, скрыто старых колёс: %s)")
 		:format(TAG, name, tostring(hidden)))
 	return model, st
