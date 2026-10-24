@@ -1,7 +1,7 @@
 -- CarService: ловит A-Chassis-машину, брошенную пользователем в Workspace,
--- держит её как шаблон и спавнит копии на старт. Модель НЕ чистится и НЕ
--- меняется: что закинул пользователь, то и едет. Управление машиной — наш
--- DragDrive (src/client/car_control.luau), физика отдаётся игроку.
+-- держит её как шаблон и спавнит копии на старт. Модель НЕ трогаем ВООБЩЕ:
+-- её родной стек A-Chassis (Initialize сваривает, Drive управляет) сам
+-- отвечает за сборку и езду. Наше дело — спавн, владелец физики, стейт.
 
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -35,12 +35,7 @@ local function isCarModel(model)
 	return model:FindFirstChild(TUNE_NAME, true) ~= nil
 end
 
--- Перенести найденную модель в шаблоны (внутри сессии). Ничего НЕ удаляется:
--- содержимое модели остаётся нетронутым. Единственное — автозапускаемые
--- скрипты (Script/LocalScript) гасятся рубильником (Disabled), иначе они
--- стартуют при спавне и рвут машину на части (пересварка деталей, Handler
--- и прочее). Модули (ModuleScript, включая Tune) не трогаем — сами они
--- не выполняются. Рубильник обратим: захочешь — включишь скрипт вручную.
+-- Перенести найденную модель в шаблоны (внутри сессии). Как есть.
 function CarService.absorb(model)
 	if not isCarModel(model) then return end
 	if state:GetAttribute("CarStatus") == "Ready" then
@@ -48,33 +43,17 @@ function CarService.absorb(model)
 		return
 	end
 
-	local off, names, seen = 0, {}, {}
-	for _, d in model:GetDescendants() do
-		if (d:IsA("Script") or d:IsA("LocalScript")) and not d.Disabled then
-			d.Disabled = true
-			off = off + 1
-			if not seen[d.Name] then
-				seen[d.Name] = true
-				table.insert(names, d.Name)
-			end
-		end
-	end
-	if off > 0 then
-		print(("%s глушу автоскрипты модели (не удаляю, %d шт): %s — рулить будет DragDrive")
-			:format(TAG, off, table.concat(names, ", ")))
-	end
-
 	local originalName = model.Name
 	model.Name = TEMPLATE_NAME
 	model.Parent = templates
 	state:SetAttribute("CarStatus", "Ready")
 	state:SetAttribute("CarName", originalName)
-	print(("%s машина захвачена как есть: «%s». Жми RACE — поставлю её на старт.")
+	print(("%s машина захвачена как есть: «%s» (родной стек A-Chassis работает).")
 		:format(TAG, originalName))
 end
 
--- Отдать физику машины игроку: без этого клиентские команды на хинжи
--- не подействуют. Вызывается с небольшой задержкой после спавна.
+-- Отдать физику машины игроку: без этого родной Drive (клиент) крутит
+-- констрейнты вхолостую. Вызывается с небольшой задержкой после спавна.
 function CarService.setOwner(car, plr)
 	if not car or not car.Parent or not plr then return end
 	for _, p in car:GetDescendants() do
@@ -86,7 +65,7 @@ function CarService.setOwner(car, plr)
 	end
 end
 
--- Спавн копии шаблона как есть. tune — правки Tune до инициализации (v0.4: УОЗ).
+-- Спавн копии шаблона. tune — правки Tune до инициализации (v0.4: УОЗ).
 function CarService.spawn(cf, ownerPlayer)
 	local template = templates:FindFirstChild(TEMPLATE_NAME)
 	if not template then
@@ -97,28 +76,43 @@ function CarService.spawn(cf, ownerPlayer)
 
 	CarService.despawn()
 
+	-- Стоковый сценарий A-Chassis: модель в мире → её скрипты сами варят
+	-- и ведут машину. Ничего не глушим, не анкируем, не перекручиваем.
 	local car = template:Clone()
-
-	-- страховка: ни один скрипт копии не должен самозапуститься в мире
-	for _, d in car:GetDescendants() do
-		if d:IsA("Script") or d:IsA("LocalScript") then
-			d.Disabled = true
-		end
-	end
-
 	car.Name = "PlayerCar"
 	car.Parent = raceFolder
 	car:PivotTo(cf)
 
-	-- только техническое: заякоренные части не дадут подвеске работать
-	for _, p in car:GetDescendants() do
-		if p:IsA("BasePart") and p.Anchored then
-			p.Anchored = false
-		end
-	end
-
 	car:SetAttribute("OwnerUserId", ownerPlayer and ownerPlayer.UserId or 0)
 	currentCar = car
+
+	-- диагностика структуры (для интеграции ИИ/тюнинга на следующих шагах)
+	task.delay(1.2, function()
+		if not car.Parent then return end
+		local parts, welds, hingeNames = 0, 0, {}
+		local wheelsInfo = {}
+		local wf = car:FindFirstChild("Wheels")
+		if wf then
+			for _, w in wf:GetChildren() do
+				local av = w:FindFirstChild("#AV", true)
+				table.insert(wheelsInfo, ("%s/%s%s"):format(w.Name, w.ClassName, av and "(#AV)" or ""))
+			end
+		end
+		for _, d in car:GetDescendants() do
+			if d:IsA("BasePart") then parts = parts + 1 end
+			if d:IsA("WeldConstraint") or d:IsA("Weld") or d:IsA("Motor6D") then welds = welds + 1 end
+			if d:IsA("HingeConstraint") then
+				hingeNames[d.Name] = (hingeNames[d.Name] or 0) + 1
+			end
+		end
+		local hinges = {}
+		for n, c in pairs(hingeNames) do
+			table.insert(hinges, n .. "x" .. c)
+		end
+		table.sort(hinges)
+		print(("%s диагностика: %d частей, %d сварок, хинжи[%s], колёса[%s]"):format(
+			TAG, parts, welds, table.concat(hinges, ", "), table.concat(wheelsInfo, " ")))
+	end)
 
 	task.delay(0.4, function()
 		if car.Parent then

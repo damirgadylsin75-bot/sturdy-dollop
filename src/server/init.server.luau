@@ -51,7 +51,7 @@ local function line(z, color, h)
 	local l = Instance.new("Part")
 	l.Anchored = true
 	l.Size = Vector3.new(Config.Race.LaneWidth * 2, 0.2, h)
-	l.Position = Vector3.new(0, 0.15, z)
+	l.Position = Vector3.new(0, 2.1, z)
 	l.Color = color
 	l.Parent = scene
 end
