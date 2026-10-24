@@ -2,7 +2,7 @@
 
 local Config = {}
 
-Config.Version = "0.7.0"
+Config.Version = "0.7.2"
 
 Config.Economy = {
 	StartCash = 500,
@@ -51,10 +51,10 @@ Config.Car2D = {
 
 -- Картинки (rbxassetid://...). Пусто = цветная заглушка с видимой спицей.
 Config.Art = {
-	PlayerBody = "",  -- картинка твоей машины (вид сбоку, нос влево!)
-	PlayerWheel = "", -- картинка колеса (диск/шина, круг)
-	AIBody = "",
-	AIWheel = "",
+	PlayerBody = "rbxassetid://138529042486596",
+	PlayerWheel = "rbxassetid://127588264992774",
+	AIBody = "rbxassetid://138529042486596",  -- пока один набор: та же машина
+	AIWheel = "rbxassetid://127588264992774",
 }
 
 Config.Net = {
