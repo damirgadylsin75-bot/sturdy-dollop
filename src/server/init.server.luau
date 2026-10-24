@@ -144,9 +144,9 @@ startRace.OnServerEvent:Connect(function(player)
 	local spawnY = laneTop + Config.Car2D.BodyHeight / 2 + Config.Car2D.WheelRadius + 0.15
 	local playerCar, playerSt = CarService.buildCar("PlayerCar",
 		CFrame.new(0, spawnY, Config.Race.StartZ), false, 0, raceFolder)
-	local aiSpawnY = aiLaneTop + Config.Car2D.BodyHeight / 2 + Config.Car2D.WheelRadius + 0.15
+	-- ИИ на ТОЙ ЖЕ дороге: та же высота, чуть глубже по X (одна полоса на вид)
 	local aiCar, aiSt = CarService.buildCar("AICar",
-		CFrame.new(0, aiSpawnY, Config.Race.StartZ), true, 0, raceFolder)
+		CFrame.new(-7, spawnY, Config.Race.StartZ), true, -7, raceFolder)
 
 	state:SetAttribute("Phase", "Race")
 	state:SetAttribute("ResultText", "")
