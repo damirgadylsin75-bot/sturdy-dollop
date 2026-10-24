@@ -1,0 +1,12 @@
+# Roblox build artifacts
+*.rbxl
+*.rbxlx
+*.rbxm
+sourcemap.json
+
+# node (test harness)
+tests/node_modules/
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -1,0 +1,34 @@
+{
+	"name": "sturdy-dollop",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"Shared": {
+				"$path": "src/shared"
+			}
+		},
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"Game": {
+				"$path": "src/server"
+			}
+		},
+		"StarterPlayer": {
+			"$className": "StarterPlayer",
+			"StarterPlayerScripts": {
+				"$className": "StarterPlayerScripts",
+				"GameClient": {
+					"$path": "src/client"
+				}
+			}
+		},
+		"Workspace": {
+			"$className": "Workspace",
+			"$properties": {
+				"SignalBehavior": "Deferred",
+				"StreamingEnabled": false
+			}
+		}
+	}
+}
