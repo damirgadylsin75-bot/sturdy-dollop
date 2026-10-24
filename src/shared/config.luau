@@ -2,7 +2,7 @@
 
 local Config = {}
 
-Config.Version = "0.7.4"
+Config.Version = "0.7.5"
 
 Config.Economy = {
 	StartCash = 500,
@@ -55,6 +55,18 @@ Config.Art = {
 	PlayerWheel = "rbxassetid://127588264992774",
 	AIBody = "rbxassetid://138529042486596",  -- пока один набор: та же машина
 	AIWheel = "rbxassetid://127588264992774",
+	-- Город-параллакс: ОТ дальнего К ближнему (порядок важен!)
+	CityLayers = {
+		"rbxassetid://110144756267800", -- 1 самый дальний
+		"rbxassetid://108602440573122",
+		"rbxassetid://79970692237712",
+		"rbxassetid://97057198362128",
+		"rbxassetid://86086272115993",
+		"rbxassetid://131361926052597",
+		"rbxassetid://135743948452505",
+		"rbxassetid://77909670130637",
+		"rbxassetid://86042935683675",  -- 9 самый ближний
+	},
 }
 
 Config.Net = {

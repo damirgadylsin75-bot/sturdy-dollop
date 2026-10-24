@@ -28,16 +28,16 @@ RunService.RenderStepped:Connect(function()
 	local myCar = race and race:FindFirstChild("PlayerCar")
 	if myCar and myCar.PrimaryPart then
 		focusZ = myCar.PrimaryPart.Position.Z
-		focusY = Config.Race.PlayerLaneTop + 5
+		focusY = Config.Race.PlayerLaneTop + 3.5
 	elseif focusY == nil then
-		focusY = Config.Race.PlayerLaneTop + 6
+		focusY = Config.Race.PlayerLaneTop + 5
 	end
 
-	local targetY = focusY + (phase == "Race" and 3 or 6)
-	cam.FieldOfView = 55
+	local targetY = focusY + (phase == "Race" and 1.5 or 4)
+	cam.FieldOfView = 50
 	cam.CFrame = CFrame.lookAt(
-		Vector3.new(100, targetY, focusZ),
-		Vector3.new(0, focusY, focusZ)
+		Vector3.new(58, targetY, focusZ), -- ближе: машина крупнее в кадре
+		Vector3.new(0, targetY - 1.5, focusZ)
 	)
 end)
 
