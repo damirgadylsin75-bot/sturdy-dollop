@@ -78,6 +78,76 @@ for m = 100, math.floor(Config.Race.DistanceM), 100 do
 	marker.Parent = scene
 end
 
+-- ===== ЗАДНИК (3D, параллакс сам собой) =====
+-- Камера на +X смотрит на трек: всё, что дальше по -X, едет по экрану
+-- медленнее. Небо-стена с градиентом, дальний ряд зданий, ближние силуэты.
+-- Всё кодом: без спрайтов, швов и лицензий.
+local backdropLen = length + 600
+local rng = Random.new(20261023)
+
+local skyWall = Instance.new("Part")
+skyWall.Anchored = true
+skyWall.CanCollide = false
+skyWall.CanQuery = false
+skyWall.CastShadow = false
+skyWall.Size = Vector3.new(2, 220, backdropLen)
+skyWall.Position = Vector3.new(-240, 70, -length / 2)
+skyWall.Color = Config.color("Sky")
+skyWall.Parent = scene
+local skyGui = Instance.new("SurfaceGui")
+skyGui.Face = Enum.NormalId.Right -- сторона к камере
+skyGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+skyGui.PixelsPerStud = 20
+skyGui.Parent = skyWall
+local skyFrame = Instance.new("Frame")
+skyFrame.Size = UDim2.fromScale(1, 1)
+skyFrame.BorderSizePixel = 0
+skyFrame.BackgroundColor3 = Config.color("SkyLow")
+skyFrame.Parent = skyGui
+local skyGrad = Instance.new("UIGradient")
+skyGrad.Rotation = 90 -- светлее у горизонта
+skyGrad.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Config.color("Sky")),
+	ColorSequenceKeypoint.new(1, Config.color("SkyLow")),
+})
+skyGrad.Parent = skyFrame
+
+-- дальний ряд: силуэты зданий (медленный параллакс)
+local z = 120
+while z > -(length + 320) do
+	local h = rng:NextNumber(10, 46)
+	local w = rng:NextNumber(12, 26)
+	local b = Instance.new("Part")
+	b.Anchored = true
+	b.CanCollide = false
+	b.CanQuery = false
+	b.CastShadow = false
+	b.Size = Vector3.new(8, h, w)
+	b.Position = Vector3.new(-140, h / 2, z)
+	b.Color = Config.color("FarBand")
+	b.Transparency = 0.12
+	b.Parent = scene
+	z = z - (w + rng:NextNumber(4, 16))
+end
+
+-- ближний ряд: низкие силуэты (быстрый параллакс)
+z = 120
+while z > -(length + 320) do
+	local h = rng:NextNumber(2.5, 7)
+	local w = rng:NextNumber(3, 9)
+	local b = Instance.new("Part")
+	b.Anchored = true
+	b.CanCollide = false
+	b.CanQuery = false
+	b.CastShadow = false
+	b.Size = Vector3.new(4, h, w)
+	b.Position = Vector3.new(-58, h / 2, z)
+	b.Color = Config.color("NearBand")
+	b.Transparency = 0.08
+	b.Parent = scene
+	z = z - (w + rng:NextNumber(14, 34))
+end
+
 -- ===== ЗАЕЗД =====
 local busy = false
 

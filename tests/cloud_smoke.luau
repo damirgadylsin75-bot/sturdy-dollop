@@ -38,20 +38,20 @@ end
 
 task.wait(1.2)
 
-local hinges, textures = 0, 0
+local hinges, sprites = 0, 0
 for _, d in car:GetDescendants() do
 	if d:IsA("HingeConstraint") then hinges = hinges + 1 end
-	if d:IsA("Texture") then textures = textures + 1 end
+	if d:IsA("ImageLabel") then sprites = sprites + 1 end
 end
 local base = car:FindFirstChild("Body")
 local baseY = base and math.floor(base.Position.Y * 100) / 100 or -999
 local vx = base and math.abs(base.AssemblyLinearVelocity.X) or 999
 
 result.hinges = hinges
-result.textures = textures
+result.sprites = sprites
 result.baseY = baseY
 result.driftX = math.floor(vx * 100) / 100
 -- текстуры: кузов 2 стороны + 2 колеса по 2 = 6
 -- машина должна стоять на колёсах: база около 3.6-3.8 (упала бы — ниже/улетела)
-result.ok = (hinges == 2) and (textures == 6) and baseY > 2.5 and baseY < 4.5 and vx < 1
+result.ok = (hinges == 2) and (sprites == 6) and baseY > 2.5 and baseY < 4.5 and vx < 1
 return result

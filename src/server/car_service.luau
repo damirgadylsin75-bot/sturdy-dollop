@@ -19,13 +19,22 @@ local E = Config.Engine
 local cars = {} -- [model] = состояние (трансмиссия, педали, полоса)
 local raceParent = workspace
 
+-- Спрайт на деталь: SurfaceGui + ImageLabel (ScaleType=Fit) — картинка
+-- ложится ВСЕГДА ЦЕЛИКОМ, без мозаики из повторов, с правильной пропорцией.
 local function applyArt(part, imageId)
 	if imageId == nil or imageId == "" then return end
 	for _, face in { Enum.NormalId.Right, Enum.NormalId.Left } do
-		local tex = Instance.new("Texture")
-		tex.Texture = imageId
-		tex.Face = face
-		tex.Parent = part
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 50
+		gui.Parent = part
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.fromScale(1, 1)
+		img.ScaleType = Enum.ScaleType.Fit
+		img.Image = imageId
+		img.Parent = gui
 	end
 end
 
