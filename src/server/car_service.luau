@@ -71,7 +71,7 @@ function CarService.buildCar(name, cf, isAI, laneX, parent)
 		w.Color = Color3.fromRGB(24, 24, 27)
 		w.CustomPhysicalProperties = PhysicalProperties.new(C.WheelDensity, C.WheelFriction, 0.4)
 		w.CanCollide = true
-		w.CFrame = cf * CFrame.new(0, -C.BodyHeight / 2, def.z)
+		w.CFrame = cf * CFrame.new(0, -C.SuspRest, def.z)
 		w.Parent = model
 		applyArt(w, wheelArt)
 
@@ -91,8 +91,41 @@ function CarService.buildCar(name, cf, isAI, laneX, parent)
 			hw.Parent = hub
 		end
 
+		-- ПОДВЕСКА: призма (вертикальный ход) + пружина с демпфером.
+		-- Кузов приседает от газа, клюёт при торможении, качается на приземлении.
+		local slide0 = Instance.new("Attachment")
+		slide0.CFrame = CFrame.new(0, -C.SuspRest, def.z)
+			* CFrame.Angles(0, 0, math.pi / 2) -- ось скольжения вертикально
+		slide0.Parent = base
+		local slide1 = Instance.new("Attachment")
+		slide1.CFrame = CFrame.Angles(0, 0, math.pi / 2)
+		slide1.Parent = w
+		local prism = Instance.new("PrismaticConstraint")
+		prism.Name = def.n .. "Slide"
+		prism.Attachment0 = slide0
+		prism.Attachment1 = slide1
+		prism.LimitsEnabled = true
+		prism.LowerLimit = -C.SuspTravel
+		prism.UpperLimit = C.SuspTravel
+		prism.Parent = w
+
+		local top = Instance.new("Attachment")
+		top.CFrame = CFrame.new(0, 0.6, def.z)
+		top.Parent = base
+		local bottom = Instance.new("Attachment")
+		bottom.Parent = w
+		local spring = Instance.new("SpringConstraint")
+		spring.Name = def.n .. "Spring"
+		spring.Attachment0 = top
+		spring.Attachment1 = bottom
+		spring.FreeLength = C.SuspRest - 0.6
+		spring.Stiffness = C.SuspStiffness
+		spring.Damping = C.SuspDamping
+		spring.MaxForce = 1e6
+		spring.Parent = w
+
 		local a0 = Instance.new("Attachment")
-		a0.CFrame = CFrame.new(0, -C.BodyHeight / 2, def.z)
+		a0.CFrame = CFrame.new(0, -C.SuspRest, def.z)
 		a0.Parent = base
 		local a1 = Instance.new("Attachment")
 		a1.Parent = w

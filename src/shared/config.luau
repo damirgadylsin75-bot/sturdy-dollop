@@ -2,7 +2,7 @@
 
 local Config = {}
 
-Config.Version = "0.7.7"
+Config.Version = "0.8.0"
 
 Config.Economy = {
 	StartCash = 500,
@@ -38,13 +38,18 @@ Config.Engine = {
 
 -- Геометрия/физика 2D-машины: кузов-пластина + 2 колеса-цилиндра на хинжах
 Config.Car2D = {
-	WheelRadius = 1.6,
-	WheelWidth = 0.9,
+	WheelRadius = 1.33, -- уменьшены в 1.2 раза
+	WheelWidth = 0.75,
 	BodyLength = 14, BodyHeight = 4, BodyThickness = 0.4,
 	FrontAxleZ = -4.2, RearAxleZ = 4.2, -- передняя на носу (нос = -Z = экранное вправо)
 	WheelDensity = 3, WheelFriction = 1.6,
-	BodyDensity = 1.6, -- тяжелее кузов = стабильнее связка с колёсами
+	BodyDensity = 2.2, -- МАССА: вес чувствуется (клевки/приседание как в GTA 4)
 	BrakeTorque = 26000,
+	-- ПОДВЕСКА: пружина + демпфер + вертикальный ход на каждом колесе
+	SuspRest = 2.2,        -- длина хода в покое (низ кузова над осью)
+	SuspTravel = 0.4,      -- ход подвески вверх/вниз
+	SuspStiffness = 20000, -- жёсткость пружины
+	SuspDamping = 700,     -- демпфер (гасит колебания)
 	HoldTorque = 1500,   -- держит на месте без газа
 	Drag = 0.0004,       -- аэросопротивление
 }

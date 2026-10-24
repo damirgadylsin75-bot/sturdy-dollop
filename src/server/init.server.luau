@@ -149,7 +149,7 @@ startRace.OnServerEvent:Connect(function(player)
 
 	-- свежие машины: игрок на нижней полосе, ИИ на верхней
 	CarService.removeAll()
-	local spawnY = laneTop + Config.Car2D.BodyHeight / 2 + Config.Car2D.WheelRadius + 0.15
+	local spawnY = laneTop + Config.Car2D.SuspRest + Config.Car2D.WheelRadius + 0.4
 	local playerCar, playerSt = CarService.buildCar("PlayerCar",
 		CFrame.new(0, spawnY, Config.Race.StartZ), false, 0, raceFolder)
 	-- ИИ на ТОЙ ЖЕ дороге: та же высота, чуть глубже по X (одна полоса на вид)
