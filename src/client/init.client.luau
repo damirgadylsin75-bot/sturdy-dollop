@@ -43,6 +43,18 @@ end
 state:GetAttributeChangedSignal("Cash"):Connect(updateCash)
 updateCash()
 
+local ver = Instance.new("TextLabel")
+ver.Size = UDim2.new(0, 120, 0, 16)
+ver.Position = UDim2.new(1, -12, 0, 10)
+ver.AnchorPoint = Vector2.new(1, 0)
+ver.BackgroundTransparency = 1
+ver.Font = Enum.Font.Code
+ver.TextSize = 13
+ver.TextColor3 = Color3.fromRGB(120, 130, 145)
+ver.TextXAlignment = Enum.TextXAlignment.Right
+ver.Text = "v" .. Config.Version
+ver.Parent = panel
+
 local raceBtn = Instance.new("TextButton")
 raceBtn.Size = UDim2.new(1, -24, 0, 56)
 raceBtn.Position = UDim2.new(0, 12, 1, -68)
