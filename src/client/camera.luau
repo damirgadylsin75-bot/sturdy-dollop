@@ -24,19 +24,11 @@ RunService.RenderStepped:Connect(function()
 	local race = scene and scene:FindFirstChild("Race")
 	local phase = state:GetAttribute("Phase")
 
-	local zSum, n = 0, 0
-	if race then
-		for _, m in race:GetChildren() do
-			if m:IsA("Model") and m.PrimaryPart then
-				zSum = zSum + m.PrimaryPart.Position.Z
-				n = n + 1
-			end
-		end
-	end
-
-	if n > 0 then
-		focusZ = zSum / n
-		focusY = (Config.Race.PlayerLaneTop * 2 + Config.Race.LaneGap) / 2 + 4
+	-- камера ведёт ТОЛЬКО машину игрока (в гараже — вид на старт)
+	local myCar = race and race:FindFirstChild("PlayerCar")
+	if myCar and myCar.PrimaryPart then
+		focusZ = myCar.PrimaryPart.Position.Z
+		focusY = Config.Race.PlayerLaneTop + 5
 	elseif focusY == nil then
 		focusY = Config.Race.PlayerLaneTop + 6
 	end

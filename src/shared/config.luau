@@ -2,7 +2,7 @@
 
 local Config = {}
 
-Config.Version = "0.7.3"
+Config.Version = "0.7.4"
 
 Config.Economy = {
 	StartCash = 500,
@@ -43,7 +43,7 @@ Config.Car2D = {
 	BodyLength = 14, BodyHeight = 4, BodyThickness = 0.4,
 	FrontAxleZ = -4.2, RearAxleZ = 4.2, -- передняя на носу (нос = -Z = экранное вправо)
 	WheelDensity = 3, WheelFriction = 1.6,
-	BodyDensity = 0.7,
+	BodyDensity = 1.6, -- тяжелее кузов = стабильнее связка с колёсами
 	BrakeTorque = 26000,
 	HoldTorque = 1500,   -- держит на месте без газа
 	Drag = 0.0004,       -- аэросопротивление

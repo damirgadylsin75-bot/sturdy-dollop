@@ -51,6 +51,7 @@ function CarService.buildCar(name, cf, isAI, laneX, parent)
 	base.Name = "Body"
 	base.Size = Vector3.new(C.BodyThickness, C.BodyHeight, C.BodyLength)
 	base.Color = bodyColor
+	base.Transparency = 1 -- заглушка невидима: виден только спрайт
 	base.CanCollide = false
 	base.CustomPhysicalProperties = PhysicalProperties.new(C.BodyDensity, 0.3, 0.5)
 	base.CFrame = cf
@@ -167,7 +168,7 @@ local function stepCar(st, dt)
 			h.AngularVelocity = 0
 			h.MotorMaxTorque = C.BrakeTorque
 		elseif gas > 0 and w.driven then
-			h.AngularVelocity = E.DirSign * 300
+			h.AngularVelocity = E.DirSign * 140
 			h.MotorMaxTorque = tq
 		elseif w.driven then
 			h.AngularVelocity = 0
@@ -178,22 +179,26 @@ local function stepCar(st, dt)
 		end
 	end
 
-	-- держим 2D: гасим боковую скорость и повороты, кроме тангажа (X)
-	local v = base.AssemblyLinearVelocity
-	base.AssemblyLinearVelocity = Vector3.new(0, v.Y, v.Z)
+	-- держим 2D: повороты гасим, кроме тангажа (X). Боковую скорость НЕ
+	-- трогаем: запись скорости только кузову рвёт связку с колёсами (эпилепсия).
 	local av = base.AssemblyAngularVelocity
-	base.AssemblyAngularVelocity = Vector3.new(av.X, 0, 0)
+	if math.abs(av.Y) > 0.01 or math.abs(av.Z) > 0.01 then
+		base.AssemblyAngularVelocity = Vector3.new(av.X, 0, 0)
+	end
 
 	-- аэросопротивление
+	local v = base.AssemblyLinearVelocity
 	if v.Magnitude > 1 then
 		base:ApplyImpulse(-v.Unit * (v.Magnitude * v.Magnitude * C.Drag)
 			* base.AssemblyMass * dt)
 	end
 
-	-- машина не уплывает со своей полосы по X
+	-- дрейф по X гасим РЕДКО и ВСЕЙ моделью (кузов вместе с колёсами),
+	-- а не телепортом одного кузова — иначе колёса отстают и дёргаются
 	local p = base.Position
-	if math.abs(p.X - st.laneX) > 0.2 then
-		base.CFrame = base.CFrame - Vector3.new(p.X - st.laneX, 0, 0)
+	if math.abs(p.X - st.laneX) > 1.5 then
+		local pivot = st.car:GetPivot()
+		st.car:PivotTo(pivot - Vector3.new(p.X - st.laneX, 0, 0))
 	end
 
 	-- приборы для клиента (10 раз/сек)
