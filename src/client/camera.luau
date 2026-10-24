@@ -51,13 +51,14 @@ local bands = {
 	band(Config.color("NearBand"), 0.3, 0.56, 0.14, 0.2),
 }
 
-local function updateBands()
-	local vp = cam.ViewportSize
-	for _, b in bands do
-		local offset = (focusZ * b.factor) % vp.X
-		b.frame.Position = UDim2.new(0, -offset, b.frame.Position.Y.Scale, 0)
+	local function updateBands()
+		local vp = cam.ViewportSize
+		for _, b in bands do
+			-- машина едет вправо (-Z): фон должен уползать ВЛЕВО с параллаксом
+			local offset = (-focusZ * b.factor) % vp.X
+			b.frame.Position = UDim2.new(0, -offset, b.frame.Position.Y.Scale, 0)
+		end
 	end
-end
 
 RunService.RenderStepped:Connect(function()
 	if not cam or cam.CameraType ~= Enum.CameraType.Scriptable then
