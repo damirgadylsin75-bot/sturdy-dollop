@@ -2,7 +2,7 @@
 
 local Config = {}
 
-Config.Version = "0.5.0"
+Config.Version = "0.6.0"
 
 Config.Economy = {
 	StartCash = 500,
@@ -44,6 +44,43 @@ Config.Colors = {
 	Car1 = "D64545",
 	Car2 = "3D7BD9",
 }
+
+
+-- Двигатель НАШЕГО шасси (единственный источник правды; тюнинг v0.7+ будет
+-- править именно эти числа — УОЗ подвинет кривую момента и т.д.)
+Config.Engine = {
+	IdleRPM = 1000, IdleTorque = 315, IdleShape = 0.275,
+	PeakRPM = 2500, PeakTorque = 390,
+	Redline = 7500, RedlineTorque = 160, RedShape = 0.31,
+	ShiftRPM = 7000, DownshiftRPM = 3850,
+	GearRatios = { 3.2, 2.1, 1.55, 1.2, 0.95 },
+	FinalDrive = 3.6,
+	TorqueScale = 2, -- масштаб тяги под массу шасси
+}
+
+-- Геометрия/физика нашего шасси
+Config.Chassis = {
+	WheelDiameter = 3.2, WheelWidth = 1.2,
+	Width = 8, Height = 1.2, Length = 16,
+	Clearance = 0.7,     -- клиренс (низ кузова над землёй)
+	BodyLift = 0.15,     -- насколько кузов поднят над рамой
+	DirSign = -1,        -- знак вращения колёс (поедет назад — поменять на 1)
+	Drag = 0.0004,       -- аэросопротивление (меньше = выше максималка)
+	BrakeTorque = 25000,
+	HoldTorque = 2000,   -- держит машину на месте без газа
+	StabilizeTorque = 5e6, -- не даёт опрокинуться (драг: руль не нужен)
+}
+
+function Config.engineSpec()
+	local E = Config.Engine
+	return {
+		idleRpm = E.IdleRPM, idleTorque = E.IdleTorque, idleShape = E.IdleShape,
+		peakRpm = E.PeakRPM, peakTorque = E.PeakTorque,
+		redline = E.Redline, redlineTorque = E.RedlineTorque, redShape = E.RedShape,
+		shiftRpm = E.ShiftRPM, downshiftRpm = E.DownshiftRPM,
+		gearCount = #E.GearRatios, finalDrive = E.FinalDrive,
+	}
+end
 
 function Config.color(name)
 	return Color3.fromHex(Config.Colors[name])
