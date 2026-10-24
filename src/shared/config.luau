@@ -2,7 +2,7 @@
 
 local Config = {}
 
-Config.Version = "0.3.2"
+Config.Version = "0.4.0"
 
 Config.Economy = {
 	StartCash = 500,
@@ -17,7 +17,7 @@ Config.Race = {
 	StudsPerMeter = 3.57,  -- роблокс-стады на метр (наш масштаб трека)
 	LaneWidth = 26,        -- стад между центрами полос
 	StartZ = -30,          -- где стоят машины на старте (стад по Z)
-	CarYawDeg = 0,         -- разворот модели машины, если смотрит не вдоль трека
+	CarYawDeg = 180,       -- разворот модели машины, если смотрит не вдоль трека
 	TreeSteps = 3,         -- амбры
 	TreeInterval = 0.5,    -- сек между амбрами
 	GreenHold = 6,         -- сек зелёного до «уехал сам»
@@ -29,6 +29,7 @@ Config.Tuning = {
 	IgnitionAdvance = { min = 5, max = 45, default = 18, unit = "°" }, -- УОЗ
 	FinalDrive = { min = 2.6, max = 5.4, default = 3.6, unit = "" },
 	TireGrip = { min = 0.8, max = 1.6, default = 1.1, unit = "g" },
+	DriveTorqueScale = 4, -- масштаб тяги под массу модели (калибруется)
 }
 
 Config.Net = {

@@ -77,12 +77,22 @@ function CarService.spawn(cf, ownerPlayer)
 
 	CarService.despawn()
 
-	-- СПАВН 1-В-1 КАК У АВТОРА: ничего не снимаем, не глушим, не удаляем.
-	-- Если модель стоит в твоём Workspace целой — в игре будет такой же целой.
+	-- СПАВН: копия как есть + физическая начинка от CarPhysics (если модель
+	-- витринная — сварка декора, мотор-хинжи колёс, держатель курса).
 	local car = template:Clone()
 	car.Name = "PlayerCar"
 	car:PivotTo(cf)
 	car.Parent = raceFolder
+
+	local phys, physErr = require(script.car_physics).build(car)
+	if phys then
+		local n = 0
+		for _ in pairs(phys.wheels) do n = n + 1 end
+		print(("%s [physics] начинка готова: привод %s, моторов %d"):format(
+			TAG, phys.config, n))
+	else
+		warn(("%s [physics] машину не оживить: %s"):format(TAG, tostring(physErr)))
+	end
 
 	car:SetAttribute("OwnerUserId", ownerPlayer and ownerPlayer.UserId or 0)
 	currentCar = car
