@@ -1,5 +1,5 @@
--- Drag II: сервер. Строит гараж/стрит, держит заезд: дерево старта,
--- реакция, финиш, награда, ИИ-соперник на второй полосе.
+-- Drag 2D: сервер. Строит трассу (две полосы в профиль), ведёт заезд:
+-- дерево старта, реакция, фальстарт, финиш, награда, ИИ на верхней полосе.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.config)
 local CarService = require(script.car_service)
 
-Players.CharacterAutoLoads = false -- никакого ходьбы: игрок сидит в машине
+Players.CharacterAutoLoads = false -- никакой ходьбы вообще
 
 local state = Instance.new("Folder")
 state.Name = Config.Net.StateFolder
@@ -22,53 +22,60 @@ remotes.Parent = ReplicatedStorage
 local startRace = Instance.new("RemoteEvent")
 startRace.Name = "StartRace"
 startRace.Parent = remotes
-local carInput = Instance.new("RemoteEvent")
-carInput.Name = "CarInput"
-carInput.Parent = remotes
+local pedal = Instance.new("RemoteEvent")
+pedal.Name = "Pedal"
+pedal.Parent = remotes
+local gear = Instance.new("RemoteEvent")
+gear.Name = "Gear"
+gear.Parent = remotes
 
--- сцена: гаражная площадка + прямой стрип на две полосы
+-- ===== ТРАССА (вид сбоку: полоса игрока внизу, ИИ выше) =====
 local scene = Instance.new("Folder")
 scene.Name = "Scene"
 scene.Parent = workspace
 
-local ground = Instance.new("Part")
-ground.Anchored = true
-ground.Size = Vector3.new(300, 2, 2200)
-ground.Position = Vector3.new(0, -1, 0)
-ground.Color = Config.color("Ground")
-ground.Parent = scene
-
 local length = Config.Race.DistanceM * Config.Race.StudsPerMeter
-local function lane(offset, color)
-	local strip = Instance.new("Part")
-	strip.Anchored = true
-	strip.Size = Vector3.new(Config.Race.LaneWidth - 4, 2, length + 220)
-	strip.Position = Vector3.new(offset, 1, -length / 2)
-	strip.Color = color
-	strip.Parent = scene
-end
-lane(-Config.Race.LaneWidth / 2, Config.color("Asphalt"))
-lane(Config.Race.LaneWidth / 2, Config.color("Asphalt"))
-
-local function line(z, color, h)
-	local l = Instance.new("Part")
-	l.Anchored = true
-	l.Size = Vector3.new(Config.Race.LaneWidth * 2, 0.2, h)
-	l.Position = Vector3.new(0, 2.1, z)
-	l.Color = color
-	l.Parent = scene
-end
-line(0, Config.color("Line"), 1.2)
-line(-length, Config.color("Line"), 2)
+local laneTop = Config.Race.PlayerLaneTop
+local aiLaneTop = laneTop + Config.Race.LaneGap
 
 local raceFolder = Instance.new("Folder")
 raceFolder.Name = "Race"
 raceFolder.Parent = scene
+CarService.setParent(raceFolder)
 
-CarService.startup(state, raceFolder)
+local function strip(topY)
+	local s = Instance.new("Part")
+	s.Anchored = true
+	s.Size = Vector3.new(60, 2, length + 220)
+	s.Position = Vector3.new(0, topY - 1, -length / 2)
+	s.Color = Config.color("Asphalt")
+	s.Parent = scene
+end
+strip(laneTop)
+strip(aiLaneTop)
 
-local function startCF(laneSign)
-	return CFrame.new(laneSign * Config.Race.LaneWidth / 2, 0.5, Config.Race.StartZ)
+-- стартовая и финишная линии через обе полосы
+local function line(z, h)
+	local l = Instance.new("Part")
+	l.Anchored = true
+	l.Size = Vector3.new(0.3, Config.Race.LaneGap + 8, h)
+	l.Position = Vector3.new(30.2, (laneTop + aiLaneTop) / 2, z)
+	l.Color = Config.color("Line")
+	l.Parent = scene
+end
+line(0, 1.4)
+line(-length, 2.4)
+
+-- отметки дистанции каждые 100 м (глаз видит скорость)
+for m = 100, math.floor(Config.Race.DistanceM), 100 do
+	local z = -m * Config.Race.StudsPerMeter
+	local marker = Instance.new("Part")
+	marker.Anchored = true
+	marker.Size = Vector3.new(0.2, Config.Race.LaneGap + 6, 0.5)
+	marker.Position = Vector3.new(30.1, (laneTop + aiLaneTop) / 2, z)
+	marker.Color = Config.color("Line")
+	marker.Transparency = 0.55
+	marker.Parent = scene
 end
 
 -- ===== ЗАЕЗД =====
@@ -78,24 +85,30 @@ local function setTree(text)
 	state:SetAttribute("TreeText", text)
 end
 
+local function carBaseZ(model)
+	local base = CarService.baseOf(model)
+	return base and base.Position.Z or 0
+end
+
 startRace.OnServerEvent:Connect(function(player)
 	if busy or state:GetAttribute("Phase") ~= "Garage" then return end
-	if not workspace:FindFirstChild("Scene") then return end
 	busy = true
 
-	-- свежие машины
-	CarService.despawnAll()
-	local playerCar, playerSt = CarService.buildCar("PlayerCar", startCF(-1), false)
-	local aiCar, aiSt = CarService.buildCar("AICar", startCF(1), true)
-
-	-- игрок сразу в сиденье, встать нельзя
-	CarService.seatPlayer(player, playerCar)
+	-- свежие машины: игрок на нижней полосе, ИИ на верхней
+	CarService.removeAll()
+	local spawnY = laneTop + Config.Car2D.BodyHeight / 2 + Config.Car2D.WheelRadius + 0.15
+	local playerCar, playerSt = CarService.buildCar("PlayerCar",
+		CFrame.new(0, spawnY, Config.Race.StartZ), false, 0, raceFolder)
+	local aiSpawnY = aiLaneTop + Config.Car2D.BodyHeight / 2 + Config.Car2D.WheelRadius + 0.15
+	local aiCar, aiSt = CarService.buildCar("AICar",
+		CFrame.new(0, aiSpawnY, Config.Race.StartZ), true, 0, raceFolder)
 
 	state:SetAttribute("Phase", "Race")
+	state:SetAttribute("ResultText", "")
 	setTree("Приготовились…")
 	task.wait(1)
 
-	-- дерево: 3 амбры с интервалом, затем зелёный
+	-- дерево: амбры одна за другой, затем зелёный
 	for i = 1, Config.Race.TreeSteps do
 		setTree(string.rep("●", i) .. "  (" .. (Config.Race.TreeSteps - i + 1) .. ")")
 		task.wait(Config.Race.TreeInterval)
@@ -105,48 +118,45 @@ startRace.OnServerEvent:Connect(function(player)
 	local greenAt = workspace:GetServerTimeNow()
 	playerSt.green = true
 	aiSt.green = true
-	aiSt.aiThrottle = 1 -- ИИ уходит сразу на зелёном
+	aiSt.gas = 1
 
-	-- реакция игрока: первый газ после зелёного
-	local reactionConn
-	reactionConn = task.spawn(function()
-		while not playerSt.reaction do
-			task.wait(0.05)
-			if playerSt.seat.Throttle > 0 then
+	-- фальстарт: газ ДО зелёного
+	local dqConn
+	dqConn = pedal.OnServerEvent:Connect(function(plr, gasOn)
+		if plr ~= player then return end
+		if not playerSt.green and gasOn and not playerSt.dq then
+			playerSt.dq = true
+			setTree("ФАЛЬСТАРТ!")
+		end
+	end)
+
+	-- реакция: первый газ ПОСЛЕ зелёного
+	task.spawn(function()
+		while not playerSt.reaction and not playerSt.dq do
+			task.wait(0.03)
+			if playerSt.gas > 0 and playerSt.green then
 				playerSt.reaction = workspace:GetServerTimeNow() - greenAt
 			end
 		end
 	end)
 
-	-- фальстарт: газ ДО зелёного
-	task.spawn(function()
-		while not playerSt.green do
-			task.wait(0.05)
-			if playerSt.seat.Throttle > 0 then
-				playerSt.dq = true
-				setTree("ФАЛЬСТАРТ! Дисквалификация")
-				break
-			end
-		end
-	end)
-
-	-- ждём финиш (максимум GreenHold + 60 сек)
+	-- ждём финиш обоих
 	local deadline = greenAt + Config.Race.GreenHold + 60
 	local aiTime, playerTime
 	while workspace:GetServerTimeNow() < deadline do
 		task.wait(0.05)
 		local now = workspace:GetServerTimeNow()
-		if not aiTime and aiSt.base.Position.Z <= -length then
+		if not aiTime and carBaseZ(aiCar) <= -length then
 			aiTime = now - greenAt
 		end
-		if not playerTime and playerSt.base.Position.Z <= -length then
+		if not playerTime and carBaseZ(playerCar) <= -length then
 			playerTime = now - greenAt
 		end
 		if playerTime and aiTime then break end
 	end
+	dqConn:Disconnect()
 
-	-- итог
-	local cash = state:GetAttribute("Cash") or 0
+	-- итог и награда
 	local reward = Config.Economy.BaseReward
 	local resultText
 	if playerSt.dq then
@@ -168,32 +178,31 @@ startRace.OnServerEvent:Connect(function(player)
 		resultText = "Не финишировал — без награды"
 	end
 
-	cash = cash + reward
-	state:SetAttribute("Cash", cash)
+	local cash = state:GetAttribute("Cash") or 0
+	state:SetAttribute("Cash", cash + reward)
 	state:SetAttribute("ResultText", resultText)
 	state:SetAttribute("LastReward", reward)
-	setTree(resultText)
+	setTree(resultText .. ("  +%d$"):format(reward))
 
-	-- откат в гараж: ИИ уходит, машина игрока едет назад на старт
 	task.wait(4)
 	CarService.removeCar(aiCar)
-	if playerCar.Parent then
-		playerCar:PivotTo(startCF(-1))
-	end
+	CarService.setPedal(playerCar, false, false)
 	state:SetAttribute("Phase", "Garage")
 	busy = false
 end)
 
--- ручная коробка: клиент шлёт "mode"/"up"/"down"
-carInput.OnServerEvent:Connect(function(player, action)
-	local char = player.Character
-	local seat = char and char:FindFirstChildOfClass("Humanoid")
-			and char.Humanoid.SeatPart
-	if not seat or not seat.Parent then return end
-	local car = seat.Parent
-	if car and car.Name == "PlayerCar" then
-		CarService.setGear(car, action)
+pedal.OnServerEvent:Connect(function(player, gasOn, brakeOn)
+	local car = workspace.Scene.Race:FindFirstChild("PlayerCar")
+	if car then
+		CarService.setPedal(car, gasOn == true, brakeOn == true)
 	end
 end)
 
-print("Drag II server boot, v" .. Config.Version)
+gear.OnServerEvent:Connect(function(player, action)
+	local car = workspace.Scene.Race:FindFirstChild("PlayerCar")
+	if car then
+		CarService.setGear(car, tostring(action))
+	end
+end)
+
+print("Drag 2D server boot, v" .. Config.Version)

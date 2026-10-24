@@ -1,6 +1,6 @@
--- Cloud smoke: версия + сборка НАШЕГО шасси на настоящем сервере Roblox.
--- Строим машину, ждём секунду, проверяем: 4 мотор-хинжа, сиденье на месте,
--- рама не провалилась сквозь мир. Отчёт идёт в PR-комментарий.
+-- Cloud smoke: версия + сборка 2D-машины на настоящем сервере Roblox.
+-- Строим машину над собственным ground-куском, ждём, проверяем: 2 хинжа,
+-- машина стоит на колёсах (не провалилась), 2D-фиксации работают.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -14,9 +14,6 @@ end
 
 local result = { version = Config.Version }
 
-local gs = ReplicatedStorage:FindFirstChild(Config.Net.StateFolder)
-result.gameState = gs and gs:GetAttribute("Phase") or "no-state"
-
 local okCar, CarService = pcall(function()
 	return require(ServerScriptService.Game.car_service)
 end)
@@ -24,9 +21,16 @@ if not okCar then
 	return { ok = false, version = Config.Version, err = "car_service: " .. tostring(CarService) }
 end
 
+-- свой мирок: пол на Y=0
+local ground = Instance.new("Part")
+ground.Anchored = true
+ground.Size = Vector3.new(80, 2, 400)
+ground.Position = Vector3.new(0, -1, 0)
+ground.Parent = workspace
+
 local car, st
 local okBuild, buildErr = pcall(function()
-	car, st = CarService.buildCar("SmokeCar", CFrame.new(0, 3, 0), true)
+	car, st = CarService.buildCar("SmokeCar", CFrame.new(0, 3.85, 0), true, 0, workspace)
 end)
 if not okBuild or not car then
 	return { ok = false, version = Config.Version, err = "build: " .. tostring(buildErr) }
@@ -35,19 +39,16 @@ end
 task.wait(1.2)
 
 local hinges = 0
-local seat = car:FindFirstChild("DriverSeat", true)
-local bodyParts = 0
 for _, d in car:GetDescendants() do
 	if d:IsA("HingeConstraint") then hinges = hinges + 1 end
-	if d:IsA("BasePart") then bodyParts = bodyParts + 1 end
 end
-local base = car:FindFirstChild("Frame")
-local baseY = base and math.floor(base.Position.Y * 10) / 10 or -999
-local fellAsleep = base and base.Anchored or false
+local base = car:FindFirstChild("Body")
+local baseY = base and math.floor(base.Position.Y * 100) / 100 or -999
+local vx = base and math.abs(base.AssemblyLinearVelocity.X) or 999
 
 result.hinges = hinges
-result.seat = seat ~= nil
-result.parts = bodyParts
 result.baseY = baseY
-result.ok = (hinges == 4) and (seat ~= nil) and (not fellAsleep)
+result.driftX = math.floor(vx * 100) / 100
+-- машина должна стоять на колёсах: база около 2+1.6=3.6 (упала бы — было бы ниже/улетела)
+result.ok = (hinges == 2) and baseY > 2.5 and baseY < 4.5 and vx < 1
 return result
