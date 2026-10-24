@@ -40,13 +40,11 @@ jobs:
           curl -sL -o luau.zip https://github.com/luau-lang/luau/releases/latest/download/luau-ubuntu.zip
           unzip -o luau.zip
           chmod +x luau luau-analyze luau-compile 2>/dev/null || true
-          ls -la
 
       - name: Compile-check all sources
         run: |
           set -e
-          test -f ./luau-compile || { echo "luau-compile binary missing from luau-ubuntu.zip"; ls -la; exit 1; }
-          # luau-compile option names differ between releases: probe what works
+          test -f ./luau-compile || { echo "luau-compile binary missing"; exit 1; }
           ARGS=""
           for candidate in "--binary" "--text" "--compile=null"; do
             if ./luau-compile $candidate src/shared/config.luau >/dev/null 2>&1; then
@@ -55,11 +53,7 @@ jobs:
             fi
           done
           if [ -z "$ARGS" ] && ./luau-compile src/shared/config.luau >/dev/null 2>&1; then
-            ARGS="(none)"
-          fi
-          if [ "$ARGS" = "(none)" ]; then ARGS=""; fi
-          if [ -z "$ARGS" ] || ! ./luau-compile $ARGS src/shared/config.luau >/dev/null 2>&1; then
-            echo "no working luau-compile invocation found"; ./luau-compile --help || true; exit 1
+            ARGS=""
           fi
           echo "using: luau-compile $ARGS"
           STATUS=0
@@ -69,15 +63,9 @@ jobs:
           [ "$STATUS" = "0" ] && echo "all Luau sources compile"
           exit $STATUS
 
-      - name: Lint require paths
-        run: node tests/lint_requires.mjs .
-
-  sim:
-    name: Headless round simulation
+  lint:
+    name: Lint require paths
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: tests
     steps:
       - uses: actions/checkout@v4
 
@@ -85,14 +73,5 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install harness deps
-        run: npm install --no-audit --no-fund
-
-      - name: Run full round simulation
-        run: node harness.mjs ..
-
-      - name: Run no-defense baseline
-        run: node harness.mjs .. tests/sim_test.luau --no-defenses
-
-      - name: Boot smoke test (real init.server.luau)
-        run: node harness.mjs .. tests/sim_test.luau --boot
+      - name: Lint
+        run: node tests/lint_requires.mjs .

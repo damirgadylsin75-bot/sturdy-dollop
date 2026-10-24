@@ -29,9 +29,6 @@
 				"SignalBehavior": "Deferred",
 				"StreamingEnabled": false
 			}
-		},
-		"Lighting": {
-			"$className": "Lighting"
 		}
 	}
 }
