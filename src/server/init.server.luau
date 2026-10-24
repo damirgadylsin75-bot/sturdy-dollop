@@ -51,15 +51,22 @@ local function strip(topY)
 	s.Color = Config.color("Asphalt")
 	s.Parent = scene
 end
-strip(laneTop)
-strip(aiLaneTop)
+strip(laneTop) -- ОДНА дорога
+
+-- тёмная земля под дорогой: низ кадра не пустой
+local under = Instance.new("Part")
+under.Anchored = true
+under.Size = Vector3.new(60, 40, length + 220)
+under.Position = Vector3.new(0, laneTop - 2 - 20, -length / 2)
+under.Color = Config.color("Ground")
+under.Parent = scene
 
 -- стартовая и финишная линии через обе полосы
 local function line(z, h)
 	local l = Instance.new("Part")
 	l.Anchored = true
-	l.Size = Vector3.new(0.3, Config.Race.LaneGap + 8, h)
-	l.Position = Vector3.new(30.2, (laneTop + aiLaneTop) / 2, z)
+	l.Size = Vector3.new(0.3, 8, h)
+	l.Position = Vector3.new(30.2, laneTop, z)
 	l.Color = Config.color("Line")
 	l.Parent = scene
 end
@@ -71,8 +78,8 @@ for m = 100, math.floor(Config.Race.DistanceM), 100 do
 	local z = -m * Config.Race.StudsPerMeter
 	local marker = Instance.new("Part")
 	marker.Anchored = true
-	marker.Size = Vector3.new(0.2, Config.Race.LaneGap + 6, 0.5)
-	marker.Position = Vector3.new(30.1, (laneTop + aiLaneTop) / 2, z)
+	marker.Size = Vector3.new(0.2, 7, 0.5)
+	marker.Position = Vector3.new(30.1, laneTop, z)
 	marker.Color = Config.color("Line")
 	marker.Transparency = 0.55
 	marker.Parent = scene
@@ -83,7 +90,8 @@ end
 -- медленнее он плывёт по экрану — глубина сама собой. Порядок в конфиге:
 -- от дальнего к ближнему. Высоты растут с глубиной (дальние = больше неба).
 local layerX = { -420, -360, -305, -255, -210, -170, -135, -105, -78 }
-local layerH = { 620, 560, 500, 445, 390, 335, 285, 240, 200 }
+local layerH = { 150, 135, 120, 108, 96, 86, 76, 66, 58 } -- мелкие
+local cityBottom = -14 -- дно города у линии дороги
 local backdropLen = 3000
 local backdropZ = -800
 
@@ -93,8 +101,8 @@ skyWall.Anchored = true
 skyWall.CanCollide = false
 skyWall.CanQuery = false
 skyWall.CastShadow = false
-skyWall.Size = Vector3.new(2, 700, backdropLen)
-skyWall.Position = Vector3.new(-450, 340, backdropZ)
+skyWall.Size = Vector3.new(2, 320, backdropLen)
+skyWall.Position = Vector3.new(-450, cityBottom + 146, backdropZ)
 skyWall.Color = Config.color("Sky")
 skyWall.Parent = scene
 
@@ -107,7 +115,7 @@ for i, artId in Config.Art.CityLayers do
 	plane.CanQuery = false
 	plane.CastShadow = false
 	plane.Size = Vector3.new(2, h, backdropLen)
-	plane.Position = Vector3.new(x, h / 2 - 2, backdropZ)
+	plane.Position = Vector3.new(x, cityBottom + h / 2, backdropZ)
 	plane.Parent = scene
 
 	local gui = Instance.new("SurfaceGui")
