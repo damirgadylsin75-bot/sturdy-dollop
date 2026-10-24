@@ -63,3 +63,4 @@ end)
 print("Drag II client boot, v" .. Config.Version)
 
 require(script.camera).start(state)
+require(script.car_control)

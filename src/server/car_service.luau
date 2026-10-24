@@ -1,9 +1,12 @@
 -- CarService: ловит A-Chassis-машину, брошенную пользователем в Workspace,
--- держит её как шаблон и спавнит копии на старт. Оригинал не портится:
--- перенос живёт только внутри игровой сессии (после stop Play модель на месте).
+-- держит её как шаблон и спавнит копии на старт. Управляет машиной наш
+-- DragDrive (src/client/car_control.luau), поэтому из чужих скриптов
+-- выживает ТОЛЬКО модуль Tune — весь остальной «начинок» моделей с Toolbox
+-- (чат-мусор, чужие админки, «EpicLights», битые приватные звуки) сносится.
 
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.config)
 
@@ -11,28 +14,6 @@ local CarService = {}
 
 local TUNE_NAME = "A-Chassis Tune"
 local TEMPLATE_NAME = "DefaultCar"
-
--- Белый список скриптов самого A-Chassis. Всё, что не он (и не внутри его
--- контейнеров), при захвате машины сносится: в моделях с Toolbox живёт мусор
--- и бэкдоры (чат-скрипты, «антилаги», чужие админки).
-local AC_KEEP_NAMES = {
-	["A-Chassis Tune"] = true,
-	Drive = true,
-	Initialize = true,
-	MiscWeld = true,
-	README = true,
-	Units = true,
-	CustomEngine = true,
-	Aerodynamics = true,
-	Controls = true,
-	GForces = true,
-	Gauges = true,
-	Ignition = true,
-	["MSteer Camera"] = true,
-	Sounds = true,
-	Tires = true,
-	VirtualInput = true,
-}
 
 local templates = ServerStorage:FindFirstChild("CarTemplates")
 if not templates then
@@ -53,37 +34,31 @@ local function isCarModel(model)
 	return model:FindFirstChild(TUNE_NAME, true) ~= nil
 end
 
--- Снести все скрипты, кроме A-Chassis: скрипт остаётся, только если он сам
--- или кто-то из его «родителей» по цепочке есть в белом списке (так выживают
--- модули внутри Tune и сервер-скрипты плагинов Sounds/Tires).
+-- Вычистить всё, кроме модуля Tune и его внутренностей (Units/CustomEngine):
+-- наш DragDrive сам рулит хинжами, а посторонние скрипты моделей — источник
+-- ошибок и бэкдоров. Звуки тоже сносим: в чужих моделях аудио обычно
+-- приватное («User is not authorized») и только спамит лог.
 local function sanitize(model)
-	local junk = {}
-	for _, d in model:GetDescendants() do
-		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
-			local keep = false
-			local node = d
-			while node do
-				if AC_KEEP_NAMES[node.Name] then
-					keep = true
-					break
-				end
-				node = node.Parent
-			end
-			if not keep then
-				table.insert(junk, d)
-			end
-		end
-	end
+	local removed, names, seen = 0, {}, {}
+	local tuneModule = model:FindFirstChild(TUNE_NAME, true)
 
-	local names, seen = {}, {}
-	for _, d in junk do
-		d:Destroy()
-		if not seen[d.Name] then
-			seen[d.Name] = true
-			table.insert(names, d.Name)
+	for _, d in model:GetDescendants() do
+		local doomed = false
+		if d:IsA("Sound") then
+			doomed = true
+		elseif d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
+			doomed = not (tuneModule and (d == tuneModule or d:IsDescendantOf(tuneModule)))
+		end
+		if doomed then
+			d:Destroy()
+			removed = removed + 1
+			if not seen[d.Name] then
+				seen[d.Name] = true
+				table.insert(names, d.Name)
+			end
 		end
 	end
-	return #junk, names
+	return removed, names
 end
 
 -- Перенести найденную модель в шаблоны (внутри сессии).
@@ -100,7 +75,7 @@ function CarService.absorb(model)
 		if #junkNames > 8 then
 			show = table.concat(junkNames, ", ", 1, 8) .. ", …"
 		end
-		print(("[CarService] чистка модели: удалено %d посторонних скриптов: %s")
+		print(("[CarService] чистка модели: удалено %d посторонних скриптов/звуков: %s")
 			:format(total, show))
 	end
 
@@ -113,8 +88,21 @@ function CarService.absorb(model)
 		:format(originalName))
 end
 
--- Спавн копии шаблона. cf — куда, tune — правки Tune до инициализации скриптов (v0.4: УОЗ и др.).
-function CarService.spawn(cf, tune)
+-- Отдать физику машины игроку: без этого клиентские команды на хинжи
+-- не подействуют. Вызывается с небольшой задержкой после спавна.
+function CarService.setOwner(car, plr)
+	if not car or not car.Parent or not plr then return end
+	for _, p in car:GetDescendants() do
+		if p:IsA("BasePart") and not p.Anchored then
+			pcall(function()
+				p:SetNetworkOwner(plr)
+			end)
+		end
+	end
+end
+
+-- Спавн копии шаблона. tune — правки Tune до инициализации (v0.4: УОЗ и др.).
+function CarService.spawn(cf, ownerPlayer)
 	local template = templates:FindFirstChild(TEMPLATE_NAME)
 	if not template then
 		state:SetAttribute("CarStatus", "Waiting")
@@ -128,7 +116,22 @@ function CarService.spawn(cf, tune)
 	car.Name = "PlayerCar"
 	car.Parent = raceFolder
 	car:PivotTo(cf)
+
+	-- модели с Toolbox иногда лежат с заякоренными частями — машине нужно уметь падать на подвеску
+	for _, p in car:GetDescendants() do
+		if p:IsA("BasePart") and p.Anchored then
+			p.Anchored = false
+		end
+	end
+
+	car:SetAttribute("OwnerUserId", ownerPlayer and ownerPlayer.UserId or 0)
 	currentCar = car
+
+	task.delay(0.4, function()
+		if car.Parent then
+			CarService.setOwner(car, ownerPlayer or Players:GetPlayerByUserId(car:GetAttribute("OwnerUserId") or 0))
+		end
+	end)
 	return car
 end
 
@@ -146,13 +149,6 @@ end
 function CarService.getTemplate()
 	return templates:FindFirstChild(TEMPLATE_NAME)
 end
-
--- v0.2+: управление без персонажа. План: клиент стреляет в car.Drive.VirtualInput
--- (BindableEvent внутри Drive-скрипта, формат — фейковый InputObject: KeyCode W +
--- UserInputState.Begin). Для физики без водителя машину нужно отдать клиенту:
--- car:SetNetworkOwner(player) — иначе сервер владеет сборкой и клиентские
--- значения констрейнтов не применятся. ИИ-машину наоборот держит сервер
--- (SetNetworkOwner(nil)) и рулит констрейнтами напрямую.
 
 function CarService.startup(stateRef, raceFolderRef)
 	state = stateRef

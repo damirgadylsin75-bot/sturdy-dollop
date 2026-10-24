@@ -73,17 +73,28 @@ end
 
 -- если машина уже лежала в Workspace — сразу ставим её на старт
 if state:GetAttribute("CarStatus") == "Ready" then
-	CarService.spawn(playerStartCF())
+	CarService.spawn(playerStartCF(), nil)
 end
+
+-- первый зашедший игрок получает машину, заспавненную до него
+Players.PlayerAdded:Connect(function(plr)
+	local car = CarService.getCurrent()
+	if car and (car:GetAttribute("OwnerUserId") or 0) == 0 then
+		car:SetAttribute("OwnerUserId", plr.UserId)
+		task.delay(0.4, function()
+			CarService.setOwner(car, plr)
+		end)
+	end
+end)
 
 startRace.OnServerEvent:Connect(function(player)
 	if state:GetAttribute("Phase") ~= "Garage" then return end
 	state:SetAttribute("Phase", "Race")
 	-- свежая машина на каждый заезд (v0.3: здесь будет дерево и соперник)
 	if state:GetAttribute("CarStatus") == "Ready" then
-		CarService.spawn(playerStartCF())
+		CarService.spawn(playerStartCF(), player)
 	end
-	-- v0.1: заглушка заезда; сюда встают дерево старта, ИИ и таймер
+	-- v0.2: заглушка заезда; сюда встают дерево старта, ИИ и таймер
 	task.delay(5, function()
 		state:SetAttribute("Phase", "Garage")
 	end)

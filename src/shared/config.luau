@@ -2,7 +2,7 @@
 
 local Config = {}
 
-Config.Version = "0.1.2"
+Config.Version = "0.2.0"
 
 Config.Economy = {
 	StartCash = 500,

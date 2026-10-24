@@ -75,3 +75,20 @@ jobs:
 
       - name: Lint
         run: node tests/lint_requires.mjs .
+
+  sim:
+    name: Headless sim (drivetrain)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install test deps
+        working-directory: tests
+        run: npm ci --no-audit --no-fund || npm i --no-audit --no-fund
+
+      - name: Run drivetrain sim
+        run: node tests/harness.mjs . tests/drivetrain_test.luau
