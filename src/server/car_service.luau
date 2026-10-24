@@ -12,6 +12,28 @@ local CarService = {}
 local TUNE_NAME = "A-Chassis Tune"
 local TEMPLATE_NAME = "DefaultCar"
 
+-- Белый список скриптов самого A-Chassis. Всё, что не он (и не внутри его
+-- контейнеров), при захвате машины сносится: в моделях с Toolbox живёт мусор
+-- и бэкдоры (чат-скрипты, «антилаги», чужие админки).
+local AC_KEEP_NAMES = {
+	["A-Chassis Tune"] = true,
+	Drive = true,
+	Initialize = true,
+	MiscWeld = true,
+	README = true,
+	Units = true,
+	CustomEngine = true,
+	Aerodynamics = true,
+	Controls = true,
+	GForces = true,
+	Gauges = true,
+	Ignition = true,
+	["MSteer Camera"] = true,
+	Sounds = true,
+	Tires = true,
+	VirtualInput = true,
+}
+
 local templates = ServerStorage:FindFirstChild("CarTemplates")
 if not templates then
 	templates = Instance.new("Folder")
@@ -31,12 +53,55 @@ local function isCarModel(model)
 	return model:FindFirstChild(TUNE_NAME, true) ~= nil
 end
 
+-- Снести все скрипты, кроме A-Chassis: скрипт остаётся, только если он сам
+-- или кто-то из его «родителей» по цепочке есть в белом списке (так выживают
+-- модули внутри Tune и сервер-скрипты плагинов Sounds/Tires).
+local function sanitize(model)
+	local junk = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
+			local keep = false
+			local node = d
+			while node do
+				if AC_KEEP_NAMES[node.Name] then
+					keep = true
+					break
+				end
+				node = node.Parent
+			end
+			if not keep then
+				table.insert(junk, d)
+			end
+		end
+	end
+
+	local names, seen = {}, {}
+	for _, d in junk do
+		d:Destroy()
+		if not seen[d.Name] then
+			seen[d.Name] = true
+			table.insert(names, d.Name)
+		end
+	end
+	return #junk, names
+end
+
 -- Перенести найденную модель в шаблоны (внутри сессии).
 function CarService.absorb(model)
 	if not isCarModel(model) then return end
 	if state:GetAttribute("CarStatus") == "Ready" then
 		warn("[CarService] машина уже захвачена, вторую игнорирую:", model.Name)
 		return
+	end
+
+	local total, junkNames = sanitize(model)
+	if total > 0 then
+		local show = table.concat(junkNames, ", ")
+		if #junkNames > 8 then
+			show = table.concat(junkNames, ", ", 1, 8) .. ", …"
+		end
+		print(("[CarService] чистка модели: удалено %d посторонних скриптов: %s")
+			:format(total, show))
 	end
 
 	local originalName = model.Name
