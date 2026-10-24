@@ -46,4 +46,33 @@ for (const f of files) {
   }
 }
 console.log(bad ? `${bad} bad require(s)` : 'require graph OK');
-process.exit(bad ? 1 : 0);
+if (bad > 0) process.exit(1);
+
+// --- module return check: ModuleScript must return exactly one value ---
+// Every .luau under src/ EXCEPT init.* (those are Scripts, not modules)
+// must have a top-level `return` (column 0), otherwise require() throws
+// "Module code did not return exactly one value" at runtime.
+import { readdirSync, statSync } from 'fs';
+
+function walk(dir) {
+  let out = [];
+  for (const f of readdirSync(dir)) {
+    const full = dir + '/' + f;
+    if (statSync(full).isDirectory()) out = out.concat(walk(full));
+    else if (f.endsWith('.luau')) out.push(full);
+  }
+  return out;
+}
+
+let badRet = 0;
+for (const file of walk('src')) {
+  const base = file.split('/').pop();
+  if (base.startsWith('init.')) continue; // Scripts, not modules
+  const text = fs.readFileSync(file, 'utf8');
+  if (!/^return\b/m.test(text)) {
+    console.error(`${file}: module has no top-level return (require() will throw)`);
+    badRet++;
+  }
+}
+if (badRet > 0) process.exit(1);
+console.log('module returns OK');

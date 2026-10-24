@@ -84,3 +84,5 @@ RunService.Heartbeat:Connect(function()
 	end
 	tree.Text = state:GetAttribute("TreeText") or ""
 end)
+
+return {}
