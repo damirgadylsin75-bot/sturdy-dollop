@@ -35,12 +35,33 @@ local function isCarModel(model)
 	return model:FindFirstChild(TUNE_NAME, true) ~= nil
 end
 
--- Перенести найденную модель в шаблоны (внутри сессии). Модель как есть.
+-- Перенести найденную модель в шаблоны (внутри сессии). Ничего НЕ удаляется:
+-- содержимое модели остаётся нетронутым. Единственное — автозапускаемые
+-- скрипты (Script/LocalScript) гасятся рубильником (Disabled), иначе они
+-- стартуют при спавне и рвут машину на части (пересварка деталей, Handler
+-- и прочее). Модули (ModuleScript, включая Tune) не трогаем — сами они
+-- не выполняются. Рубильник обратим: захочешь — включишь скрипт вручную.
 function CarService.absorb(model)
 	if not isCarModel(model) then return end
 	if state:GetAttribute("CarStatus") == "Ready" then
 		warn(("%s машина уже захвачена — «%s» не трогаю"):format(TAG, model.Name))
 		return
+	end
+
+	local off, names, seen = 0, {}, {}
+	for _, d in model:GetDescendants() do
+		if (d:IsA("Script") or d:IsA("LocalScript")) and not d.Disabled then
+			d.Disabled = true
+			off = off + 1
+			if not seen[d.Name] then
+				seen[d.Name] = true
+				table.insert(names, d.Name)
+			end
+		end
+	end
+	if off > 0 then
+		print(("%s глушу автоскрипты модели (не удаляю, %d шт): %s — рулить будет DragDrive")
+			:format(TAG, off, table.concat(names, ", ")))
 	end
 
 	local originalName = model.Name
@@ -77,6 +98,14 @@ function CarService.spawn(cf, ownerPlayer)
 	CarService.despawn()
 
 	local car = template:Clone()
+
+	-- страховка: ни один скрипт копии не должен самозапуститься в мире
+	for _, d in car:GetDescendants() do
+		if d:IsA("Script") or d:IsA("LocalScript") then
+			d.Disabled = true
+		end
+	end
+
 	car.Name = "PlayerCar"
 	car.Parent = raceFolder
 	car:PivotTo(cf)
