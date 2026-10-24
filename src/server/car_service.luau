@@ -77,49 +77,58 @@ function CarService.spawn(cf, ownerPlayer)
 
 	CarService.despawn()
 
-	-- Стоковый сценарий A-Chassis: модель в мире → её скрипты сами варят
-	-- и ведут машину. Ничего не глушим и не удаляем. Единственное чисто
-	-- техническое движение: снять якоря (заякоренная машина не поедет,
-	-- а модели из Toolbox часто лежат с заякоренным корнем).
+	-- СПАВН 1-В-1 КАК У АВТОРА: ничего не снимаем, не глушим, не удаляем.
+	-- Если модель стоит в твоём Workspace целой — в игре будет такой же целой.
 	local car = template:Clone()
 	car.Name = "PlayerCar"
 	car:PivotTo(cf)
-	for _, p in car:GetDescendants() do
-		if p:IsA("BasePart") and p.Anchored then
-			p.Anchored = false
-		end
-	end
 	car.Parent = raceFolder
 
 	car:SetAttribute("OwnerUserId", ownerPlayer and ownerPlayer.UserId or 0)
 	currentCar = car
 
-	-- диагностика структуры (для интеграции ИИ/тюнинга на следующих шагах)
+	-- глубокая диагностика: из чего машина и ЧЕМ она может ехать
 	task.delay(1.2, function()
 		if not car.Parent then return end
-		local parts, welds, hingeNames = 0, 0, {}
+		local parts, anchored, welds = 0, 0, 0
+		local hinges, prisms, springs, movers = {}, 0, 0, {}
 		local wheelsInfo = {}
 		local wf = car:FindFirstChild("Wheels")
 		if wf then
 			for _, w in wf:GetChildren() do
-				local av = w:FindFirstChild("#AV", true)
-				table.insert(wheelsInfo, ("%s/%s%s"):format(w.Name, w.ClassName, av and "(#AV)" or ""))
+				local kids = {}
+				for _, k in w:GetChildren() do
+					table.insert(kids, k.Name .. ":" .. k.ClassName)
+				end
+				table.insert(wheelsInfo, ("%s[%s]{%s}"):format(
+					w.Name, w.ClassName, table.concat(kids, " ")))
+				for _, k in w:GetDescendants() do
+					if k:IsA("HingeConstraint") then hinges[#hinges + 1] = k.Name end
+					if k:IsA("BodyVelocity") or k:IsA("BodyAngularVelocity") or k:IsA("BodyGyro") then
+						movers[k.ClassName] = (movers[k.ClassName] or 0) + 1
+					end
+				end
 			end
 		end
 		for _, d in car:GetDescendants() do
-			if d:IsA("BasePart") then parts = parts + 1 end
+			if d:IsA("BasePart") then
+				parts = parts + 1
+				if d.Anchored then anchored = anchored + 1 end
+			end
 			if d:IsA("WeldConstraint") or d:IsA("Weld") or d:IsA("Motor6D") then welds = welds + 1 end
-			if d:IsA("HingeConstraint") then
-				hingeNames[d.Name] = (hingeNames[d.Name] or 0) + 1
+			if d:IsA("HingeConstraint") then hinges[#hinges + 1] = d.Name end
+			if d:IsA("PrismaticConstraint") then prisms = prisms + 1 end
+			if d:IsA("SpringConstraint") then springs = springs + 1 end
+			if d:IsA("BodyVelocity") or d:IsA("BodyAngularVelocity") or d:IsA("BodyGyro") then
+				movers[d.ClassName] = (movers[d.ClassName] or 0) + 1
 			end
 		end
-		local hinges = {}
-		for n, c in pairs(hingeNames) do
-			table.insert(hinges, n .. "x" .. c)
-		end
-		table.sort(hinges)
-		print(("%s диагностика: %d частей, %d сварок, хинжи[%s], колёса[%s]"):format(
-			TAG, parts, welds, table.concat(hinges, ", "), table.concat(wheelsInfo, " ")))
+		local mv = {}
+		for c, n in pairs(movers) do table.insert(mv, c .. "x" .. n) end
+		table.sort(mv)
+		print(("%s структура: частей %d (якорей %d), сварок %d, хинжей %d, призм %d, пружин %d, бодичаны[%s]")
+			:format(TAG, parts, anchored, welds, #hinges, prisms, springs, table.concat(mv, ",")))
+		print(("%s колёса: %s"):format(TAG, table.concat(wheelsInfo, "  ")))
 	end)
 
 	task.delay(0.4, function()
