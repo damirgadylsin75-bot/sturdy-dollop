@@ -91,15 +91,26 @@ function CarService.buildCar(name, cf, isAI, laneX, parent)
 			hw.Parent = hub
 		end
 
-		-- ПОДВЕСКА: призма (вертикальный ход) + пружина с демпфером.
-		-- Кузов приседает от газа, клюёт при торможении, качается на приземлении.
+		-- ПОДВЕСКА (правильная схема): колесо крутится хинжом на СТУПИЦЕ,
+		-- ступица скользит вертикально по кузову (призма) на ПРУЖИНЕ с
+		-- демпфером. Без преднатяга: FreeLength = расстоянию в покое.
+		local suspensionHub = Instance.new("Part")
+		suspensionHub.Name = def.n .. "Hub"
+		suspensionHub.Size = Vector3.new(0.5, 0.5, 0.5)
+		suspensionHub.Transparency = 1
+		suspensionHub.CanCollide = false
+		suspensionHub.CustomPhysicalProperties = PhysicalProperties.new(0.3, 0.3, 0.5)
+		suspensionHub.CFrame = w.CFrame
+		suspensionHub.Parent = model
+
+		-- призма: вертикальный ход ступицы относительно кузова
 		local slide0 = Instance.new("Attachment")
 		slide0.CFrame = CFrame.new(0, -C.SuspRest, def.z)
 			* CFrame.Angles(0, 0, math.pi / 2) -- ось скольжения вертикально
 		slide0.Parent = base
 		local slide1 = Instance.new("Attachment")
 		slide1.CFrame = CFrame.Angles(0, 0, math.pi / 2)
-		slide1.Parent = w
+		slide1.Parent = suspensionHub
 		local prism = Instance.new("PrismaticConstraint")
 		prism.Name = def.n .. "Slide"
 		prism.Attachment0 = slide0
@@ -107,26 +118,27 @@ function CarService.buildCar(name, cf, isAI, laneX, parent)
 		prism.LimitsEnabled = true
 		prism.LowerLimit = -C.SuspTravel
 		prism.UpperLimit = C.SuspTravel
-		prism.Parent = w
+		prism.Parent = suspensionHub
 
+		-- пружина + демпфер: кузов ↔ ступица, нулевой преднатяг
 		local top = Instance.new("Attachment")
 		top.CFrame = CFrame.new(0, 0.6, def.z)
 		top.Parent = base
 		local bottom = Instance.new("Attachment")
-		bottom.Parent = w
+		bottom.Parent = suspensionHub
 		local spring = Instance.new("SpringConstraint")
 		spring.Name = def.n .. "Spring"
 		spring.Attachment0 = top
 		spring.Attachment1 = bottom
-		spring.FreeLength = C.SuspRest - 0.6
+		spring.FreeLength = C.SuspRest + 0.6 -- расстояние в покое, без преднатяга
 		spring.Stiffness = C.SuspStiffness
 		spring.Damping = C.SuspDamping
-		spring.MaxForce = 1e6
-		spring.Parent = w
+		spring.MaxForce = 500000
+		spring.Parent = suspensionHub
 
+		-- хинж: колесо крутится на ступице
 		local a0 = Instance.new("Attachment")
-		a0.CFrame = CFrame.new(0, -C.SuspRest, def.z)
-		a0.Parent = base
+		a0.Parent = suspensionHub
 		local a1 = Instance.new("Attachment")
 		a1.Parent = w
 		local h = Instance.new("HingeConstraint")
@@ -136,7 +148,7 @@ function CarService.buildCar(name, cf, isAI, laneX, parent)
 		h.ActuatorType = Enum.ActuatorType.Motor
 		h.MotorMaxTorque = 0
 		h.AngularVelocity = 0
-		h.Parent = w
+		h.Parent = suspensionHub
 
 		wheels[def.n] = { part = w, hinge = h, driven = def.driven }
 	end

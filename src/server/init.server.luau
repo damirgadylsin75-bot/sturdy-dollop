@@ -51,6 +51,13 @@ local function strip(topY)
 	s.Color = Config.color("Asphalt")
 	s.Parent = scene
 end
+-- дефолтные плиты Studio сносим: они светят серым под дорогой
+for _, d in workspace:GetChildren() do
+	if d:IsA("BasePart") and (d.Name == "Baseplate" or d.Name == "SpawnLocation") then
+		d:Destroy()
+	end
+end
+
 strip(laneTop) -- ОДНА дорога
 
 -- тёмная земля под дорогой: низ кадра не пустой
